@@ -1,3 +1,5 @@
+// TODO language stuff
+
 const path = require('path')
 const { getWalletBalance, sendLendingOffer } = require(path.resolve(__dirname, './api/index.js'))
 const { arrayToMap, formatMoney, getEnv } = require(path.resolve(__dirname, './utils/index.js'))

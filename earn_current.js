@@ -1,5 +1,5 @@
 // TODO pass params to filter markets
-// TODO add subAccount params
+// TODO language stuff
 
 const path = require('path')
 const { getFills, getMarkets } = require(path.resolve(__dirname, './api/index.js'))

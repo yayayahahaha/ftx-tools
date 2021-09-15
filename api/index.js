@@ -1,6 +1,3 @@
-// TODO sub-account switch stuff
-// TODO required params check
-
 const path = require('path')
 const fetch = require('node-fetch')
 const { createHeader, formatMoney, fullPath } = require(path.resolve(__dirname, '../utils/index.js'))

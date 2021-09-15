@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "lending_offer": "node happy_farm.js",
+    "earn_current": "node earn_current.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

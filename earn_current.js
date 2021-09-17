@@ -2,7 +2,7 @@
 // TODO language stuff
 
 const path = require('path')
-const { getFills, getMarkets } = require(path.resolve(__dirname, './api/index.js'))
+const { getSubAccounts, getFills, getMarkets } = require(path.resolve(__dirname, './api/index.js'))
 const { arrayToMap, formatMoney, getEnv } = require(path.resolve(__dirname, './utils/index.js'))
 
 const subAccount = getEnv('subAccount') || ''
@@ -10,8 +10,29 @@ const subAccount = getEnv('subAccount') || ''
 init()
 
 async function init() {
-  const [fills, fillsError] = await fetchFills(subAccount)
-  if (fillsError) return
+  const [subAccounts, subAccountError] = await fetchSubAccount()
+  if (subAccountError) return
+  subAccounts.push({ nickname: '' })
+
+  const subAccountFillsPromise = subAccounts.map(account => fetchFills(account.nickname))
+  const subAccountFillsResult = (await Promise.all(subAccountFillsPromise))
+    .map(result => result[0])
+    .reduce((map, account) => {
+      Object.keys(account).forEach(market => {
+        if (!map[market]) {
+          map[market] = account[market]
+          return
+        }
+
+        Object.keys(account[market]).forEach(moneyKey => {
+          map[market][moneyKey] += account[market][moneyKey]
+        })
+      })
+
+      return map
+    }, {})
+
+  const fills = subAccountFillsResult
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))
   if (marketsError) return
 
@@ -34,6 +55,8 @@ async function init() {
   }
   Object.keys(result).forEach(name => {
     const { spendUsd, size, averagePrice, revenuePersent, revenueUsd, currentPrice, nowUsd } = result[name]
+    const nowUsdLabel = spendUsd > nowUsd ? '剩餘價值' : '當前價值'
+
     console.log(`幣種: ${name}`)
     console.log(`損益: ${revenueUsd} USD`)
     console.log(`損益率: ${revenuePersent}`)
@@ -42,11 +65,20 @@ async function init() {
     console.log(`均價: ${averagePrice} USD`)
     console.log(`成本: ${spendUsd} USD`)
     console.log(`現價: ${currentPrice} USD`)
-    console.log(`收入: ${nowUsd} USD`)
+    console.log(`${nowUsdLabel}: ${nowUsd} USD`)
     console.log('----------')
   })
 }
 
+async function fetchSubAccount() {
+  const [result, error] = await getSubAccounts()
+  if (error) {
+    console.log('[ERROR] getSubAccounts: 取得子帳戶列表失敗!')
+    return [null, error]
+  }
+
+  return [result, null]
+}
 async function fetchFills(subAccount) {
   const [response, error] = await getFills(subAccount)
   if (error) {

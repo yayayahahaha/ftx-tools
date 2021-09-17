@@ -60,10 +60,22 @@ async function getMarkets(subAccount = '') {
     .then(r => [r.result, null])
     .catch(e => [null, e])
 }
+async function getSubAccounts() {
+  const path = '/api/subaccounts'
+  const headers = createHeader({ path })
+  const [result, error] = await request(fullPath(path), { headers })
+  if (error) return [null, error]
+
+  return await result
+    .json()
+    .then(r => [r.result, null])
+    .catch(e => [null, e])
+}
 
 module.exports = {
   getWalletBalance,
   sendLendingOffer,
   getFills,
-  getMarkets
+  getMarkets,
+  getSubAccounts
 }

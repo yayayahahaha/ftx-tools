@@ -1,6 +1,10 @@
 // TODO pass params to filter markets
 // TODO language stuff
 
+// TODO 兌換 的欄位也要算進損益
+// 所有幣的加總結果也算一算. e.g. 總成本 / 總餘額
+// 同步修改 README.md
+
 const path = require('path')
 const { getSubAccounts, getFills, getMarkets } = require(path.resolve(__dirname, './api/index.js'))
 const { arrayToMap, formatMoney, getEnv } = require(path.resolve(__dirname, './utils/index.js'))

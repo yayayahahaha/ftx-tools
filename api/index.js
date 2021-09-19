@@ -12,6 +12,17 @@ function request(fullPath, config = {}) {
       .catch(e => [null, e])
   })
 }
+function timeParams(config = {}) {
+  return (({ start_time, end_time }) => ({ start_time, end_time }))(
+    Object.assign(
+      {
+        start_time: 1564146934,
+        end_time: Math.floor(Date.now() / 1000)
+      },
+      config
+    )
+  )
+}
 
 // GET 取得錢包餘額
 async function getWalletBalance(subAccount) {
@@ -42,19 +53,26 @@ async function getMarkets(subAccount = '') {
 }
 // GET 充幣
 async function getDepositsHistory(subAccount = '') {
-  const path = '/api/wallet/deposits'
+  const formStr = qs.stringify(timeParams())
+
+  const path = `/api/wallet/deposits?formStr?${formStr}`
   const headers = createHeader({ path, subAccount })
   return request(fullPath(path), { headers })
 }
 // GET 提幣
 async function getWithdrawalsHistory(subAccount = '') {
-  const path = '/api/wallet/withdrawals'
+  const formStr = qs.stringify(timeParams())
+
+  const path = `/api/wallet/withdrawals?${formStr}`
   const headers = createHeader({ path, subAccount })
   return request(fullPath(path), { headers })
 }
 // GET 成交, 兌換 也算 (type=otc)
-async function getFills(subAccount = '') {
-  const path = `/api/fills`
+async function getFills(subAccount = '', form = {}) {
+  const { market } = form
+  const formStr = qs.stringify({ ...timeParams(), market })
+
+  const path = `/api/fills?${formStr}`
   const headers = createHeader({ path, subAccount })
   return request(fullPath(path), { headers })
 }

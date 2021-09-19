@@ -52,16 +52,16 @@ async function init() {
   }, {})
 
   // only for print to console
-  console.log(`${subAccount || '主'}帳戶: ${subAccount}`)
   if (!Object.keys(result).length) {
     console.log('-無損益資訊可以顯示-')
     return
   }
   Object.keys(result).forEach(name => {
-    const { spendUsd, size, averagePrice, revenuePersent, revenueUsd, currentPrice, nowUsd } = result[name]
+    const { spendUsd: rowSpendUsd, size, averagePrice, revenuePersent, revenueUsd, currentPrice, nowUsd } = result[name]
+    const spendUsd = formatMoney(rowSpendUsd, 4)
     const nowUsdLabel = spendUsd > nowUsd ? '剩餘價值' : '當前價值'
 
-    console.log(`幣種: ${name}`)
+    console.log(`========== ${name} ==========`)
     console.log(`損益: ${revenueUsd} USD`)
     console.log(`損益率: ${revenuePersent}`)
     console.log('')
@@ -70,7 +70,7 @@ async function init() {
     console.log(`成本: ${spendUsd} USD`)
     console.log(`現價: ${currentPrice} USD`)
     console.log(`${nowUsdLabel}: ${nowUsd} USD`)
-    console.log('----------')
+    console.log('')
   })
 }
 

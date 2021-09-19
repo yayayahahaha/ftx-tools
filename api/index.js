@@ -1,6 +1,7 @@
 const path = require('path')
 const fetch = require('node-fetch')
 const { createHeader, formatMoney, fullPath } = require(path.resolve(__dirname, '../utils/index.js'))
+const qs = require('qs')
 
 function request(fullPath, config = {}) {
   return fetch(fullPath, config).then(response => {
@@ -12,12 +13,14 @@ function request(fullPath, config = {}) {
   })
 }
 
+// GET 取得錢包餘額
 async function getWalletBalance(subAccount) {
   const path = '/api/wallet/balances'
   const headers = createHeader({ path, subAccount })
 
   return request(fullPath(path), { headers })
 }
+// POST 發送借貸請求
 async function sendLendingOffer(body = {}, subAccount = '') {
   body.size = body.size ? formatMoney(body.size) : 0
 
@@ -31,31 +34,62 @@ async function sendLendingOffer(body = {}, subAccount = '') {
 
   return request(fullPath(path), requestConfig)
 }
-async function getFills(subAccount = '') {
-  // 成交
-  const path = `/api/fills`
-  const headers = createHeader({ path, subAccount })
-  return request(fullPath(path), { headers })
-}
+// GET 取得當前匯率資訊
 async function getMarkets(subAccount = '') {
   const path = '/api/markets'
   const headers = createHeader({ path, subAccount })
   return request(fullPath(path), { headers })
 }
+// GET 充幣
+async function getDepositsHistory(subAccount = '') {
+  const path = '/api/wallet/deposits'
+  const headers = createHeader({ path, subAccount })
+  return request(fullPath(path), { headers })
+}
+// GET 提幣
+async function getWithdrawalsHistory(subAccount = '') {
+  const path = '/api/wallet/withdrawals'
+  const headers = createHeader({ path, subAccount })
+  return request(fullPath(path), { headers })
+}
+// GET 成交, 兌換 也算 (type=otc)
+async function getFills(subAccount = '') {
+  const path = `/api/fills`
+  const headers = createHeader({ path, subAccount })
+  return request(fullPath(path), { headers })
+}
+// GET 歷史匯率
+async function getHistoricalPrices(subAccount = '', config = {}) {
+  const { marketName, timestamp } = config
+
+  if (!marketName) return [null, new Error('marketName 為必填項目')]
+  if (!timestamp) return [null, new Error('timestamp 為必填項目')]
+  if (!/^\d+$/.test(timestamp)) return [null, new Error('timestamp 格式錯誤')]
+
+  const formStr = qs.stringify({
+    resolution: 15,
+    start_time: timestamp,
+    end_time: timestamp
+  })
+
+  const path = `/api/markets/${marketName}/candles?${formStr}`
+  const headers = createHeader({ path, subAccount })
+  return request(fullPath(path), { headers })
+}
+// GET 取得子帳戶列表
 async function getSubAccounts() {
   const path = '/api/subaccounts'
   const headers = createHeader({ path })
   return request(fullPath(path), { headers })
 }
-/*async function getSomething() {
-  GET /markets/{market_name}/candles?resolution={resolution}&start_time={start_time}&end_time={end_time}
-
-}*/
 
 module.exports = {
   getWalletBalance,
   sendLendingOffer,
   getFills,
   getMarkets,
-  getSubAccounts
+  getSubAccounts,
+  getDepositsHistory,
+  getWithdrawalsHistory,
+  getHistoricalPrices
 }

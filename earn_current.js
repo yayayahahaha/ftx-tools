@@ -1,22 +1,57 @@
 // TODO pass params to filter markets
 // TODO language stuff
 
-// TODO 兌換 的欄位也要算進損益
-// 所有幣的加總結果也算一算. e.g. 總成本 / 總餘額
-// 同步修改 README.md
+// TODO 兌換 的欄位也要算進損益 --> 已經包含在 fills 裡面了，type 是 otc
+// 還有其他基本上所有和錢的++--有關的欄位都要算
+// 如果沒有USD換算的，要打api去取得幣種取得當時的匯率去做換算
+// ^^^這個感覺"要"寫成function
+// --> 把所有交易形式的東西都整理成統一格式後以 USD 作基底去運算感覺比較容易
+// --> 時間順序感覺沒差，只要能取得當時匯率的話先加還是先減結果應該要是一樣的
+
+// TODO 所有幣的加總結果也算一算. e.g. 總成本 / 總餘額
+
+// TODO 同步修改 README.md
 
 const path = require('path')
-const { getSubAccounts, getFills, getMarkets } = require(path.resolve(__dirname, './api/index.js'))
-const { arrayToMap, formatMoney, getEnv } = require(path.resolve(__dirname, './utils/index.js'))
-
-const subAccount = getEnv('subAccount') || ''
+const { arrayToMap, formatMoney } = require(path.resolve(__dirname, './utils/index.js'))
+const {
+  getSubAccounts,
+  getHistoricalPrices,
+  getDepositsHistory,
+  getWithdrawalsHistory,
+  getFills,
+  getMarkets
+} = require(path.resolve(__dirname, './api/index.js'))
 
 init()
 
 async function init() {
   const [subAccounts, subAccountError] = await fetchSubAccount()
   if (subAccountError) return
-  subAccounts.push({ nickname: '' })
+  subAccounts.push({ nickname: '' /* 主錢包 */ })
+
+  // const [historicalPrices, historicalPricesError] = await getHistoricalPrices()
+  // if (historicalPricesError) return
+  const [fill, fillsError] = await getFills()
+  if (fillsError) {
+    console.log('[ERROR]] getFills: 取得 fills 失敗!', fillsError)
+    return
+  }
+  console.log('fill:', fill.length)
+  const [depositsHistory, depositsHistoryError] = await getDepositsHistory()
+  if (depositsHistoryError) {
+    console.log('[ERROR]] getDepositsHistory: 取得 depositsHistory 失敗!', depositsHistoryError)
+    return
+  }
+  console.log('depositsHistory:', depositsHistory.length)
+  const [withdrawalsHistory, withdrawalsHistoryError] = await getWithdrawalsHistory()
+  if (withdrawalsHistoryError) {
+    console.log('[ERROR]] getWithdrawalsHistory: 取得 withdrawalsHistory 失敗!', withdrawalsHistoryError)
+    return
+  }
+  console.log('withdrawalsHistory:', withdrawalsHistory.length)
+
+  if (true) return
 
   const subAccountFillsPromise = subAccounts.map(account => fetchFills(account.nickname))
   const subAccountFillsResult = (await Promise.all(subAccountFillsPromise))

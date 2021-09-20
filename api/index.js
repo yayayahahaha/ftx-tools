@@ -86,8 +86,8 @@ async function getHistoricalPrices(subAccount = '', config = {}) {
 
   const formStr = qs.stringify({
     resolution: 15,
-    start_time: timestamp,
-    end_time: timestamp + 15
+    start_time: timestamp - 15,
+    end_time: timestamp
   })
 
   const path = `/api/markets/${marketName}/candles?${formStr}`

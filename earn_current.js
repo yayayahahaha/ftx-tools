@@ -30,31 +30,15 @@ async function init() {
   if (subAccountError) return
   subAccounts.push({ nickname: '' /* 主錢包 */ })
 
-  // const [historicalPrices, historicalPricesError] = await getHistoricalPrices()
-  // if (historicalPricesError) return
-  const [fill, fillsError] = await getFills()
-  if (fillsError) {
-    console.log('[ERROR]] getFills: 取得 fills 失敗!', fillsError)
+  const subAccountInfoPromise = subAccounts.map(account => fetchWalletInfo(account.nickname))
+  const subAccountInfoResult = await Promise.all(subAccountInfoPromise)
+  const hasError = subAccountInfoResult.map(result => result[1]).filter(error => error).length
+  if (hasError) {
+    console.log('[ERROR] fetchWalletInfo 取得subAccountInfo 失敗!', subAccountInfoResult)
     return
   }
-  console.log('fill:', fill.length)
-  const [depositsHistory, depositsHistoryError] = await getDepositsHistory()
-  if (depositsHistoryError) {
-    console.log('[ERROR]] getDepositsHistory: 取得 depositsHistory 失敗!', depositsHistoryError)
-    return
-  }
-  console.log('depositsHistory:', depositsHistory.length)
-  const [withdrawalsHistory, withdrawalsHistoryError] = await getWithdrawalsHistory()
-  if (withdrawalsHistoryError) {
-    console.log('[ERROR]] getWithdrawalsHistory: 取得 withdrawalsHistory 失敗!', withdrawalsHistoryError)
-    return
-  }
-  console.log('withdrawalsHistory:', withdrawalsHistory.length)
 
-  if (true) return
-
-  const subAccountFillsPromise = subAccounts.map(account => fetchFills(account.nickname))
-  const subAccountFillsResult = (await Promise.all(subAccountFillsPromise))
+  const fills = subAccountInfoResult
     .map(result => result[0])
     .reduce((map, account) => {
       Object.keys(account).forEach(market => {
@@ -71,7 +55,6 @@ async function init() {
       return map
     }, {})
 
-  const fills = subAccountFillsResult
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))
   if (marketsError) return
 
@@ -109,6 +92,18 @@ async function init() {
   })
 }
 
+async function fetchWalletInfo(subAccount = '') {
+  // fills and conversion
+  const [fills, fillsError] = await fetchFills(subAccount)
+  if (fillsError) {
+    console.log('[ERROR] fetchWalletInfo: fetchFills 失敗!', fillsError)
+    return [null, fillsError]
+  }
+  // TODO withdraw
+  // TODO deposite
+
+  return [fills, null]
+}
 async function fetchSubAccount() {
   const [result, error] = await getSubAccounts()
   if (error) {
@@ -125,16 +120,17 @@ async function fetchFills(subAccount) {
     return [null, error]
   }
 
-  const list = response
-    .filter(fill => fill.market)
-    .sort((a, b) => new Date(a.time).valueOf() - new Date(b.time).valueOf())
+  const [list, formatError] = await _formatFillsResponse(response)
+  if (formatError) {
+    console.log('[ERROR] _formatFillsResponse: 整理fills response 失敗!', formatError)
+    return [null, formatError]
+  }
   const map = arrayToMap(list, 'market', { isMulti: true })
 
   const result = Object.keys(map).reduce((info, trade) => {
     const tradeList = map[trade]
     const result = tradeList.reduce(
       (sum, tradeInfo) => {
-        // console.log(tradeInfo)
         const { side, price, size, fee: rowFee, feeCurrency } = tradeInfo
         const fee = feeCurrency === 'USD' ? rowFee : rowFee * price
 
@@ -143,7 +139,7 @@ async function fetchFills(subAccount) {
           spendUsd = price * size + fee
           sum.spendUsd += spendUsd
           sum.size += size
-        } else if (side === 'sell' /* haven't check params when it's not all in */) {
+        } else if (side === 'sell') {
           spendUsd = price * size + fee
           sum.spendUsd += spendUsd
           sum.size -= size
@@ -154,13 +150,71 @@ async function fetchFills(subAccount) {
       },
       { spendUsd: 0, size: 0, averagePrice: 0 }
     )
-    if (!result.size) return info
+    if (result.size <= 0) return info
     info[trade] = result
 
     return info
   }, {})
-
   return [result, error]
+
+  async function _formatFillsResponse(list) {
+    const promises = list.map(fill => __mapCurrency(fill))
+    return await Promise.all(promises)
+      .then(result => [result.reduce((list, item) => list.concat(item), []), null])
+      .catch(error => [null, error])
+
+    async function __mapCurrency(fill) {
+      if (fill.quoteCurrency === 'USD') return [fill]
+      else if (fill.baseCurrency === 'USD') return ___baseIsUsd(fill)
+      else return await ___bothNotUsd(fill)
+
+      function ___baseIsUsd(fill) {
+        // 用其他幣種的要做反轉: 用 A 買 USD -> 賣 A 得 USD, 賣 USD 得 A -> 用 USD 買 A
+        fill.market = `${fill.quoteCurrency}/${fill.baseCurrency}`
+        fill.side = fill.side === 'buy' ? 'sell' : 'buy'
+        fill.size = fill.size * fill.price
+        fill.price = 1 / fill.price
+        ;[fill.baseCurrency, fill.quoteCurrency] = [fill.quoteCurrency, fill.baseCurrency]
+        return [fill]
+      }
+      async function ___bothNotUsd(fill) {
+        // quoteCurrency 和 baseCurrency 都不是 USD 的情況:
+        // 展開成兩筆交易: 把被使用的幣種轉換成 USD, 再用那個USD 去做原有的交易
+        const timestamp = Math.floor(new Date(fill.time).valueOf() / 1000)
+        const baseMarketName = `${fill.baseCurrency}/USD`
+        const quoteMarketName = `${fill.quoteCurrency}/USD`
+        const basePromise = getHistoricalPrices(subAccount, { marketName: baseMarketName, timestamp })
+        const quotePromise = getHistoricalPrices(subAccount, { marketName: quoteMarketName, timestamp })
+
+        const [[rowBasePrice, baseError], [rowQuotePrice, quoteError]] = await Promise.all([basePromise, quotePromise])
+        if (baseError || quoteError) {
+          console.log('[ERROR] get historyPrice error!', baseError, quoteError)
+          throw new Error(JSON.stringify({ baseError, quoteError }))
+        }
+        const [{ close: basePrice }] = rowBasePrice
+        const [{ close: quotePrice }] = rowQuotePrice
+
+        const antiSide = fill.side === 'sell' ? 'buy' : 'sell'
+        const base = {
+          market: `${fill.baseCurrency}/USD`,
+          side: fill.side,
+          size: fill.size,
+          price: basePrice,
+          feeCurrency: fill.feeCurrency,
+          fee: fill.fee
+        }
+        const quote = {
+          market: `${fill.quoteCurrency}/USD`,
+          side: antiSide,
+          size: fill.size * fill.price,
+          price: quotePrice,
+          feeCurrency: fill.feeCurrency,
+          fee: fill.fee
+        }
+        return [base, quote]
+      }
+    }
+  }
 }
 async function fetchMarkets(coins) {
   const coinsMap = coins.reduce((map, coin) => Object.assign(map, { [coin]: true }), {})

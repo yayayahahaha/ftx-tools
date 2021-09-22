@@ -107,12 +107,13 @@ async function fetchFills(subAccount) {
   }
 
   const concatList = [...fills, ...deposits, ...withdrawals]
-  const [list, formatError] = await _formatFillsResponse(concatList)
+  const [list, formatError] = await _normalizedFills(concatList)
   if (formatError) {
-    console.log('[ERROR] fetchFills: _formatFillsResponse 失敗!', formatError)
+    console.log('[ERROR] fetchFills: _normalizedFills 失敗!', formatError)
     return [null, formatError]
   }
   fs.writeFileSync(path.resolve(__dirname, './concatList.json'), JSON.stringify(concatList, null, 2))
+  fs.writeFileSync(path.resolve(__dirname, './list.json'), JSON.stringify(concatList, null, 2))
   console.log('concatList: ', concatList.length)
   console.log('list: ', list.length)
 
@@ -148,7 +149,7 @@ async function fetchFills(subAccount) {
   }, {})
   return [result, null]
 
-  async function _formatFillsResponse(list) {
+  async function _normalizedFills(list) {
     const promises = list.map(fill => __mapCurrency(fill))
     return await Promise.all(promises)
       .then(result => [result.reduce((list, item) => list.concat(item), []), null])

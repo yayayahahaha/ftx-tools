@@ -99,8 +99,6 @@ async function fetchWalletInfo(subAccount = '') {
     console.log('[ERROR] fetchWalletInfo: fetchFills 失敗!', fillsError)
     return [null, fillsError]
   }
-  // TODO withdraw
-  // TODO deposite
 
   return [fills, null]
 }
@@ -125,7 +123,21 @@ async function fetchFills(subAccount) {
     console.log('[ERROR] _formatFillsResponse: 整理fills response 失敗!', formatError)
     return [null, formatError]
   }
-  const map = arrayToMap(list, 'market', { isMulti: true })
+  const [deposits, depositsError] = await fetchDeposits(subAccount)
+  if (depositsError) {
+    console.log('[ERROR] _formatFillsResponse: depositsError 失敗!', depositsError)
+    return [null, depositsError]
+  }
+  const [withdrawals, withdrawalsError] = await fetchWithdrawals(subAccount)
+  if (withdrawalsError) {
+    console.log('[ERROR] _formatFillsResponse: withdrawalsError 失敗!', withdrawalsError)
+    return [null, withdrawalsError]
+  }
+
+  // testing codes
+  // console.log('concatList: ', concatList)
+  const concatList = [...list, ...deposits, ...withdrawals]
+  const map = arrayToMap(concatList, 'market', { isMulti: true })
 
   const result = Object.keys(map).reduce((info, trade) => {
     const tradeList = map[trade]
@@ -150,7 +162,7 @@ async function fetchFills(subAccount) {
       },
       { spendUsd: 0, size: 0, averagePrice: 0 }
     )
-    if (result.size <= 0) return info
+    if (result.size <= 0.0000001) return info
     info[trade] = result
 
     return info
@@ -226,4 +238,80 @@ async function fetchMarkets(coins) {
   const list = response.filter(i => coinsMap[i.name])
 
   return [list, null]
+}
+// 充幣: 用充幣當下的USD匯率去計算價格
+async function fetchDeposits(subAccount) {
+  const [deposits, error] = await getDepositsHistory(subAccount)
+  if (error) {
+    console.log('[ERROR] fetchDepositsHistory: getDepositsHistory 失敗!', error)
+    return [null, error]
+  }
+  const depositsPromise = deposits
+    .filter(deposit => deposit.status === 'confirmed')
+    .map(deposit =>
+      new Promise(resolve => {
+        const marketName = `${deposit.coin}/USD`
+        const timestamp = Math.floor(new Date(deposit.time).valueOf() / 1000)
+        return resolve(getHistoricalPrices(subAccount, { marketName, timestamp }))
+      }).then(historyResponse => {
+        const [history, historyFailed] = historyResponse
+        if (historyFailed) throw historyFailed
+
+        const price = history[0].close
+        return {
+          market: `${deposit.coin}/USD`,
+          side: 'buy',
+          size: deposit.size,
+          price,
+          feeCurrency: 'USD',
+          fee: deposit.fee || 0
+        }
+      })
+    )
+  const [depositsResult, depositsFailed] = await Promise.all(depositsPromise)
+    .then(response => [response, null])
+    .catch(error => [null, error])
+  if (depositsFailed) {
+    console.log('[ERROR] fetchDeposits: depositsPromise 失敗!', depositsFailed)
+    return [null, depositsFailed]
+  }
+  return [depositsResult, null]
+}
+// 提幣: 用提幣當下的USD匯率去計算價格
+async function fetchWithdrawals(subAccount) {
+  const [withdrawals, error] = await getWithdrawalsHistory(subAccount)
+  if (error) {
+    console.log('[ERROR] fetchWithdrawals: getWithdrawalsHistory 失敗!', error)
+    return [null, error]
+  }
+  const withdrawalsPromise = withdrawals
+    .filter(withdrawal => withdrawal.status === 'complete' && withdrawal.coin !== 'USD')
+    .map(withdrawal =>
+      new Promise(resolve => {
+        const marketName = `${withdrawal.coin}/USD`
+        const timestamp = Math.floor(new Date(withdrawal.time).valueOf() / 1000)
+        return resolve(getHistoricalPrices(subAccount, { marketName, timestamp }))
+      }).then(historyResponse => {
+        const [history, historyFailed] = historyResponse
+        if (historyFailed) throw historyFailed
+
+        const price = history[0].close
+        return {
+          market: `${withdrawal.coin}/USD`,
+          side: 'sell',
+          size: withdrawal.size,
+          price,
+          feeCurrency: 'USD',
+          fee: withdrawal.fee || 0
+        }
+      })
+    )
+  const [withdrawalsResult, withdrawalsFailed] = await Promise.all(withdrawalsPromise)
+    .then(response => [response, null])
+    .catch(error => [null, error])
+  if (withdrawalsFailed) {
+    console.log('[ERROR] fetchWithdrawals: withdrawalsPromise 失敗!', withdrawalsFailed)
+    return [null, withdrawalsFailed]
+  }
+  return [withdrawalsResult, null]
 }

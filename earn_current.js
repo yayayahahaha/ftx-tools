@@ -14,14 +14,12 @@
 
 const path = require('path')
 const { arrayToMap, formatMoney } = require(path.resolve(__dirname, './utils/index.js'))
-const {
-  getSubAccounts,
-  getHistoricalPrices,
-  getDepositsHistory,
-  getWithdrawalsHistory,
-  getFills,
-  getMarkets
-} = require(path.resolve(__dirname, './api/index.js'))
+const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = require(path.resolve(
+  __dirname,
+  './utils/fetch.js'
+))
+const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
+const fs = require('fs')
 
 init()
 
@@ -30,7 +28,8 @@ async function init() {
   if (subAccountError) return
   subAccounts.push({ nickname: '' /* 主錢包 */ })
 
-  const subAccountInfoPromise = subAccounts.map(account => fetchWalletInfo(account.nickname))
+  const subAccountInfoPromise = [{ nickname: '' }].map(account => fetchFills(account.nickname))
+  // const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname))
   const subAccountInfoResult = await Promise.all(subAccountInfoPromise)
   const hasError = subAccountInfoResult.map(result => result[1]).filter(error => error).length
   if (hasError) {
@@ -92,53 +91,33 @@ async function init() {
   })
 }
 
-async function fetchWalletInfo(subAccount = '') {
-  // fills and conversion
-  const [fills, fillsError] = await fetchFills(subAccount)
-  if (fillsError) {
-    console.log('[ERROR] fetchWalletInfo: fetchFills 失敗!', fillsError)
-    return [null, fillsError]
-  }
-
-  return [fills, null]
-}
-async function fetchSubAccount() {
-  const [result, error] = await getSubAccounts()
-  if (error) {
-    console.log('[ERROR] getSubAccounts: 取得子帳戶列表失敗!')
-    return [null, error]
-  }
-
-  return [result, null]
-}
 async function fetchFills(subAccount) {
-  const [response, error] = await getFills(subAccount)
-  if (error) {
-    console.log('[ERROR] getFills: 取得 fills 失敗!', await error.json())
-    return [null, error]
+  const fillsReq = getFills(subAccount)
+  const depositsReq = fetchDeposits(subAccount)
+  const withdrawalsReq = fetchWithdrawals(subAccount)
+
+  const [[fills, fillsError], [deposits, depositsError], [withdrawals, withdrawalsError]] = await Promise.all([
+    fillsReq,
+    depositsReq,
+    withdrawalsReq
+  ])
+  if (fillsError || depositsError || withdrawalsError) {
+    console.log('[ERROR] fetchFills: 取得資料失敗!')
+    return [null, { fillsError, depositsError, withdrawalsError }]
   }
 
-  const [list, formatError] = await _formatFillsResponse(response)
+  const concatList = [...fills, ...deposits, ...withdrawals]
+  const [list, formatError] = await _formatFillsResponse(concatList)
   if (formatError) {
-    console.log('[ERROR] _formatFillsResponse: 整理fills response 失敗!', formatError)
+    console.log('[ERROR] fetchFills: _formatFillsResponse 失敗!', formatError)
     return [null, formatError]
   }
-  const [deposits, depositsError] = await fetchDeposits(subAccount)
-  if (depositsError) {
-    console.log('[ERROR] _formatFillsResponse: depositsError 失敗!', depositsError)
-    return [null, depositsError]
-  }
-  const [withdrawals, withdrawalsError] = await fetchWithdrawals(subAccount)
-  if (withdrawalsError) {
-    console.log('[ERROR] _formatFillsResponse: withdrawalsError 失敗!', withdrawalsError)
-    return [null, withdrawalsError]
-  }
+  fs.writeFileSync(path.resolve(__dirname, './concatList.json'), JSON.stringify(concatList, null, 2))
+  console.log('concatList: ', concatList.length)
+  console.log('list: ', list.length)
 
-  // testing codes
-  // console.log('concatList: ', concatList)
-  const concatList = [...list, ...deposits, ...withdrawals]
-  const map = arrayToMap(concatList, 'market', { isMulti: true })
-
+  // TODO 這下面可能也要檢查一下..
+  const map = arrayToMap(list, 'market', { isMulti: true })
   const result = Object.keys(map).reduce((info, trade) => {
     const tradeList = map[trade]
     const result = tradeList.reduce(
@@ -167,7 +146,7 @@ async function fetchFills(subAccount) {
 
     return info
   }, {})
-  return [result, error]
+  return [result, null]
 
   async function _formatFillsResponse(list) {
     const promises = list.map(fill => __mapCurrency(fill))
@@ -227,91 +206,4 @@ async function fetchFills(subAccount) {
       }
     }
   }
-}
-async function fetchMarkets(coins) {
-  const coinsMap = coins.reduce((map, coin) => Object.assign(map, { [coin]: true }), {})
-  const [response, error] = await getMarkets()
-  if (error) {
-    console.log('[ERROR] getMarkets: 取得 markets 失敗!', await error.json())
-    return [null, error]
-  }
-  const list = response.filter(i => coinsMap[i.name])
-
-  return [list, null]
-}
-// 充幣: 用充幣當下的USD匯率去計算價格
-async function fetchDeposits(subAccount) {
-  const [deposits, error] = await getDepositsHistory(subAccount)
-  if (error) {
-    console.log('[ERROR] fetchDepositsHistory: getDepositsHistory 失敗!', error)
-    return [null, error]
-  }
-  const depositsPromise = deposits
-    .filter(deposit => deposit.status === 'confirmed')
-    .map(deposit =>
-      new Promise(resolve => {
-        const marketName = `${deposit.coin}/USD`
-        const timestamp = Math.floor(new Date(deposit.time).valueOf() / 1000)
-        return resolve(getHistoricalPrices(subAccount, { marketName, timestamp }))
-      }).then(historyResponse => {
-        const [history, historyFailed] = historyResponse
-        if (historyFailed) throw historyFailed
-
-        const price = history[0].close
-        return {
-          market: `${deposit.coin}/USD`,
-          side: 'buy',
-          size: deposit.size,
-          price,
-          feeCurrency: 'USD',
-          fee: deposit.fee || 0
-        }
-      })
-    )
-  const [depositsResult, depositsFailed] = await Promise.all(depositsPromise)
-    .then(response => [response, null])
-    .catch(error => [null, error])
-  if (depositsFailed) {
-    console.log('[ERROR] fetchDeposits: depositsPromise 失敗!', depositsFailed)
-    return [null, depositsFailed]
-  }
-  return [depositsResult, null]
-}
-// 提幣: 用提幣當下的USD匯率去計算價格
-async function fetchWithdrawals(subAccount) {
-  const [withdrawals, error] = await getWithdrawalsHistory(subAccount)
-  if (error) {
-    console.log('[ERROR] fetchWithdrawals: getWithdrawalsHistory 失敗!', error)
-    return [null, error]
-  }
-  const withdrawalsPromise = withdrawals
-    .filter(withdrawal => withdrawal.status === 'complete' && withdrawal.coin !== 'USD')
-    .map(withdrawal =>
-      new Promise(resolve => {
-        const marketName = `${withdrawal.coin}/USD`
-        const timestamp = Math.floor(new Date(withdrawal.time).valueOf() / 1000)
-        return resolve(getHistoricalPrices(subAccount, { marketName, timestamp }))
-      }).then(historyResponse => {
-        const [history, historyFailed] = historyResponse
-        if (historyFailed) throw historyFailed
-
-        const price = history[0].close
-        return {
-          market: `${withdrawal.coin}/USD`,
-          side: 'sell',
-          size: withdrawal.size,
-          price,
-          feeCurrency: 'USD',
-          fee: withdrawal.fee || 0
-        }
-      })
-    )
-  const [withdrawalsResult, withdrawalsFailed] = await Promise.all(withdrawalsPromise)
-    .then(response => [response, null])
-    .catch(error => [null, error])
-  if (withdrawalsFailed) {
-    console.log('[ERROR] fetchWithdrawals: withdrawalsPromise 失敗!', withdrawalsFailed)
-    return [null, withdrawalsFailed]
-  }
-  return [withdrawalsResult, null]
 }

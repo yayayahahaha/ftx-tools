@@ -1,7 +1,6 @@
 const path = require('path')
 const crypto = require('crypto')
 const fs = require('fs')
-
 const { apiKey, secretKey } = (function () {
   try {
     const { apiKey, secretKey } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../input.json')))

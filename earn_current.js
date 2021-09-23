@@ -1,6 +1,8 @@
 // TODO pass params to filter markets
 // TODO language stuff
 
+// TODO 總資產佔比 -> 添加 verbose 參數才顯示之類的?
+
 const path = require('path')
 const { arrayToMap, formatMoney, printResult } = require(path.resolve(__dirname, './utils/index.js'))
 const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = require(path.resolve(

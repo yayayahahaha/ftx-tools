@@ -109,6 +109,9 @@ function printResult(result) {
     console.log('-無損益資訊可以顯示-')
     return
   }
+  let totalSpendUsd = 0
+  let totalRevenueUsd = 0
+  let totalNowUsd = 0
   Object.keys(result).forEach(name => {
     const {
       spendUsd: rowSpendUsd,
@@ -123,7 +126,10 @@ function printResult(result) {
     const spendUsd = formatMoney(rowSpendUsd, 4)
     const size = formatMoney(rowSize, 6)
     const averagePrice = formatMoney(rowAveragePrice, 4)
-    const nowUsdLabel = spendUsd > nowUsd ? '剩餘價值' : '當前價值'
+
+    totalSpendUsd += spendUsd
+    totalRevenueUsd += revenueUsd
+    totalNowUsd += nowUsd
 
     console.log(`========== ${name} ==========`)
     console.log(`損益: ${revenueUsd} USD`)
@@ -134,9 +140,16 @@ function printResult(result) {
     console.log(`均價: ${averagePrice} USD`)
     console.log(`成本: ${spendUsd} USD`)
     console.log(`現價: ${currentPrice} USD`)
-    console.log(`${nowUsdLabel}: ${nowUsd} USD`)
+    console.log(`當前餘額: ${nowUsd} USD`)
     console.log('')
   })
+
+  console.log('----------')
+  console.log('')
+
+  console.log(`總投資金額: ${formatMoney(totalSpendUsd, 4)} USD`)
+  console.log(`當前總餘額: ${formatMoney(totalNowUsd, 4)} USD`)
+  console.log(`總損益: ${formatMoney(totalRevenueUsd, 4)} USD`)
 }
 
 module.exports = {

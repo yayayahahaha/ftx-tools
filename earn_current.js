@@ -1,8 +1,6 @@
 // TODO pass params to filter markets
 // TODO language stuff
 
-// TODO 所有幣的加總結果也算一算. e.g. 總成本 / 總餘額
-
 // TODO 同步修改 README.md
 
 const path = require('path')

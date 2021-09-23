@@ -1,8 +1,6 @@
 // TODO pass params to filter markets
 // TODO language stuff
 
-// TODO 同步修改 README.md
-
 const path = require('path')
 const { arrayToMap, formatMoney, printResult } = require(path.resolve(__dirname, './utils/index.js'))
 const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = require(path.resolve(

@@ -19,7 +19,6 @@ const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = requi
   './utils/fetch.js'
 ))
 const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
-const fs = require('fs')
 
 init()
 
@@ -95,8 +94,6 @@ async function fetchFills(subAccount) {
   }
 
   const map = arrayToMap(list, 'market', { isMulti: true })
-  fs.writeFileSync(path.resolve(__dirname, './map.json'), JSON.stringify(map, null, 2))
-
   const result = _addThemAll(map)
   return [result, null]
 

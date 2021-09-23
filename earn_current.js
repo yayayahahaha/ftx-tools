@@ -27,8 +27,7 @@ async function init() {
   if (subAccountError) return
   subAccounts.push({ nickname: '' /* 主錢包 */ })
 
-  const subAccountInfoPromise = [{ nickname: '' }].map(account => fetchFills(account.nickname))
-  // const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname))
+  const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname))
   const subAccountInfoResult = await Promise.all(subAccountInfoPromise)
   const hasError = subAccountInfoResult.map(result => result[1]).filter(error => error).length
   if (hasError) {

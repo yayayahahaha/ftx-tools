@@ -104,11 +104,46 @@ function getEnv(key) {
       return null
   }
 }
+function printResult(result) {
+  if (!Object.keys(result).length) {
+    console.log('-無損益資訊可以顯示-')
+    return
+  }
+  Object.keys(result).forEach(name => {
+    const {
+      spendUsd: rowSpendUsd,
+      size: rowSize,
+      averagePrice: rowAveragePrice,
+      tradeCount,
+      revenuePersent,
+      revenueUsd,
+      currentPrice,
+      nowUsd
+    } = result[name]
+    const spendUsd = formatMoney(rowSpendUsd, 4)
+    const size = formatMoney(rowSize, 6)
+    const averagePrice = formatMoney(rowAveragePrice, 4)
+    const nowUsdLabel = spendUsd > nowUsd ? '剩餘價值' : '當前價值'
+
+    console.log(`========== ${name} ==========`)
+    console.log(`損益: ${revenueUsd} USD`)
+    console.log(`損益率: ${revenuePersent}`)
+    console.log('')
+    console.log(`交易次數: ${tradeCount} 次`)
+    console.log(`持有數量: ${size}`)
+    console.log(`均價: ${averagePrice} USD`)
+    console.log(`成本: ${spendUsd} USD`)
+    console.log(`現價: ${currentPrice} USD`)
+    console.log(`${nowUsdLabel}: ${nowUsd} USD`)
+    console.log('')
+  })
+}
 
 module.exports = {
   createHeader,
   arrayToMap,
   formatMoney,
   fullPath,
-  getEnv
+  getEnv,
+  printResult
 }

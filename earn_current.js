@@ -37,6 +37,7 @@ async function init() {
     return
   }
 
+  // 將subAccount 的項目加總
   const fills = subAccountInfoResult
     .map(result => result[0])
     .reduce((map, account) => {
@@ -74,14 +75,26 @@ async function init() {
     return
   }
   Object.keys(result).forEach(name => {
-    const { spendUsd: rowSpendUsd, size, averagePrice, revenuePersent, revenueUsd, currentPrice, nowUsd } = result[name]
+    const {
+      spendUsd: rowSpendUsd,
+      size: rowSize,
+      averagePrice: rowAveragePrice,
+      tradeCount,
+      revenuePersent,
+      revenueUsd,
+      currentPrice,
+      nowUsd
+    } = result[name]
     const spendUsd = formatMoney(rowSpendUsd, 4)
+    const size = formatMoney(rowSize, 6)
+    const averagePrice = formatMoney(rowAveragePrice, 4)
     const nowUsdLabel = spendUsd > nowUsd ? '剩餘價值' : '當前價值'
 
     console.log(`========== ${name} ==========`)
     console.log(`損益: ${revenueUsd} USD`)
     console.log(`損益率: ${revenuePersent}`)
     console.log('')
+    console.log(`交易次數: ${tradeCount} 次`)
     console.log(`持有數量: ${size}`)
     console.log(`均價: ${averagePrice} USD`)
     console.log(`成本: ${spendUsd} USD`)
@@ -112,43 +125,53 @@ async function fetchFills(subAccount) {
     console.log('[ERROR] fetchFills: _normalizedFills 失敗!', formatError)
     return [null, formatError]
   }
-  fs.writeFileSync(path.resolve(__dirname, './concatList.json'), JSON.stringify(concatList, null, 2))
-  fs.writeFileSync(path.resolve(__dirname, './list.json'), JSON.stringify(concatList, null, 2))
-  console.log('concatList: ', concatList.length)
-  console.log('list: ', list.length)
 
-  // TODO 這下面可能也要檢查一下..
   const map = arrayToMap(list, 'market', { isMulti: true })
-  const result = Object.keys(map).reduce((info, trade) => {
-    const tradeList = map[trade]
-    const result = tradeList.reduce(
-      (sum, tradeInfo) => {
-        const { side, price, size, fee: rowFee, feeCurrency } = tradeInfo
-        const fee = feeCurrency === 'USD' ? rowFee : rowFee * price
+  fs.writeFileSync(path.resolve(__dirname, './map.json'), JSON.stringify(map, null, 2))
 
-        let spendUsd = 0
-        if (side === 'buy') {
-          spendUsd = price * size + fee
-          sum.spendUsd += spendUsd
-          sum.size += size
-        } else if (side === 'sell') {
-          spendUsd = price * size + fee
-          sum.spendUsd += spendUsd
-          sum.size -= size
-        }
-
-        sum.averagePrice = formatMoney(sum.spendUsd / sum.size, 4)
-        return sum
-      },
-      { spendUsd: 0, size: 0, averagePrice: 0 }
-    )
-    if (result.size <= 0.0000001) return info
-    info[trade] = result
-
-    return info
-  }, {})
+  const result = _addThemAll(map)
   return [result, null]
 
+  function _addThemAll(map) {
+    let result = Object.keys(map).reduce((info, market) => {
+      info[market] = info[market] || { spendUsd: 0, size: 0, averagePrice: 0 }
+      const marketInfo = info[market]
+
+      const tradeList = map[market]
+      marketInfo.tradeCount = tradeList.length
+      tradeList.forEach(trade => {
+        const { side, price, size, feeCurrency, fee } = trade
+        let unit = 0
+        switch (side) {
+          case 'buy':
+            unit = 1
+            break
+          case 'sell':
+            unit = -1
+            break
+          default:
+            console.log(`[ERROR] _addThemAll: side 既不是buy 也不是 sell, 是 ${side} !`)
+            return
+        }
+
+        marketInfo.spendUsd += price * size * unit
+        marketInfo.size += size * unit
+        marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0
+
+        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || { spendUsd: 0, size: 0, averagePrice: 0 }
+        const feeInfo = info[`${feeCurrency}/USD`]
+        feeInfo.size += fee * unit
+      })
+
+      return info
+    }, {})
+    result = Object.keys(result).reduce((info, market) => {
+      if (result[market].size <= 0.000001) return info
+      info[market] = result[market]
+      return info
+    }, {})
+    return result
+  }
   async function _normalizedFills(list) {
     const promises = list.map(fill => __mapCurrency(fill))
     return await Promise.all(promises)
@@ -156,6 +179,7 @@ async function fetchFills(subAccount) {
       .catch(error => [null, error])
 
     async function __mapCurrency(fill) {
+      fill.market = `${fill.baseCurrency}/${fill.quoteCurrency}`
       if (fill.quoteCurrency === 'USD') return [fill]
       else if (fill.baseCurrency === 'USD') return ___baseIsUsd(fill)
       else return await ___bothNotUsd(fill)

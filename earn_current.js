@@ -1,16 +1,7 @@
 // TODO pass params to filter markets
 // TODO language stuff
 
-// TODO 兌換 的欄位也要算進損益 --> 已經包含在 fills 裡面了，type 是 otc
-// 還有其他基本上所有和錢的++--有關的欄位都要算
-// 如果沒有USD換算的，要打api去取得幣種取得當時的匯率去做換算
-// ^^^這個感覺"要"寫成function
-// --> 把所有交易形式的東西都整理成統一格式後以 USD 作基底去運算感覺比較容易
-// --> 時間順序感覺沒差，只要能取得當時匯率的話先加還是先減結果應該要是一樣的
-
-// TODO 所有幣的加總結果也算一算. e.g. 總成本 / 總餘額
-
-// TODO 同步修改 README.md
+// TODO 總資產佔比 -> 添加 verbose 參數才顯示之類的?
 
 const path = require('path')
 const { arrayToMap, formatMoney, printResult } = require(path.resolve(__dirname, './utils/index.js'))
@@ -27,8 +18,7 @@ async function init() {
   if (subAccountError) return
   subAccounts.push({ nickname: '' /* 主錢包 */ })
 
-  const subAccountInfoPromise = [{ nickname: '' }].map(account => fetchFills(account.nickname))
-  // const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname))
+  const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname))
   const subAccountInfoResult = await Promise.all(subAccountInfoPromise)
   const hasError = subAccountInfoResult.map(result => result[1]).filter(error => error).length
   if (hasError) {

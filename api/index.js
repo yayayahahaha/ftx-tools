@@ -101,11 +101,11 @@ async function getSubAccounts() {
   return request(fullPath(path), { headers })
 }
 
-async function getSpotMarginHistory() {
+async function getSpotMarginHistory(subAccount = '') {
   const formStr = qs.stringify(timeParams())
 
   const path = `/api/spot_margin/lending_history?${formStr || ''}`
-  const headers = createHeader({ path, subAccount: '開心農場' })
+  const headers = createHeader({ path, subAccount })
   return request(fullPath(path), { headers })
 }
 

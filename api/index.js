@@ -101,6 +101,14 @@ async function getSubAccounts() {
   return request(fullPath(path), { headers })
 }
 
+async function getSpotMarginHistory() {
+  const formStr = qs.stringify(timeParams())
+
+  const path = `/api/spot_margin/lending_history?${formStr || ''}`
+  const headers = createHeader({ path, subAccount: '開心農場' })
+  return request(fullPath(path), { headers })
+}
+
 module.exports = {
   getWalletBalance,
   sendLendingOffer,
@@ -109,5 +117,6 @@ module.exports = {
   getSubAccounts,
   getDepositsHistory,
   getWithdrawalsHistory,
-  getHistoricalPrices
+  getHistoricalPrices,
+  getSpotMarginHistory
 }

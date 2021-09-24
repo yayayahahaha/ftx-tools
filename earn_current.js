@@ -11,6 +11,9 @@ const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = requi
 ))
 const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
 
+const { colorConsole } = require(path.resolve(__dirname, './utils/console.js'))
+colorConsole()
+
 init()
 
 async function init() {

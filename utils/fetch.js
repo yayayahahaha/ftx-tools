@@ -29,7 +29,18 @@ async function fetchDeposits(subAccount) {
     return [null, error]
   }
   const depositsPromise = deposits
-    .filter(deposit => deposit.status === 'confirmed')
+    .filter(deposit => {
+      switch (deposit.coin) {
+        case 'USD':
+        case 'USDC':
+        case 'TUSD':
+        case 'USDP':
+        case 'BUSD':
+        case 'HUSD':
+          return false
+      }
+      return deposit.status === 'confirmed'
+    })
     .map(deposit =>
       new Promise(resolve => {
         const marketName = `${deposit.coin}/USD`
@@ -72,7 +83,18 @@ async function fetchWithdrawals(subAccount) {
     return [null, error]
   }
   const withdrawalsPromise = withdrawals
-    .filter(withdrawal => withdrawal.status === 'complete' && withdrawal.coin !== 'USD')
+    .filter(withdrawal => {
+      switch (withdrawal.coin) {
+        case 'USD':
+        case 'USDC':
+        case 'TUSD':
+        case 'USDP':
+        case 'BUSD':
+        case 'HUSD':
+          return false
+      }
+      return withdrawal.status === 'complete'
+    })
     .map(withdrawal =>
       new Promise(resolve => {
         const marketName = `${withdrawal.coin}/USD`

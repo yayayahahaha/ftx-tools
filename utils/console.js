@@ -6,6 +6,7 @@ const underscore = '\x1b[4m'
 const blink = '\x1b[5m'
 const reverse = '\x1b[7m'
 const hidden = '\x1b[8m'
+const bold = '\033[1m' // why the linter WARNING ?
 
 const fgBlack = '\x1b[30m'
 const fgRed = '\x1b[31m'
@@ -67,6 +68,7 @@ module.exports = {
   blink,
   reverse,
   hidden,
+  bold,
   fgBlack,
   fgRed,
   fgGreen,

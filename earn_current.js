@@ -11,9 +11,6 @@ const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = requi
 ))
 const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
 
-const { colorConsole } = require(path.resolve(__dirname, './utils/console.js'))
-colorConsole()
-
 init()
 
 async function init() {
@@ -53,7 +50,7 @@ async function init() {
   const result = markets.reduce((map, market) => {
     const { name, price: currentPrice } = market
     const { averagePrice, spendUsd, size } = fills[name]
-    const revenuePersent = `${formatMoney(((currentPrice - averagePrice) * 100) / averagePrice, 4)}%`
+    const revenuePersent = `${formatMoney(((currentPrice - averagePrice) * 100) / averagePrice, 4)}`
     const nowUsd = formatMoney(size * currentPrice, 4)
     const revenueUsd = formatMoney(nowUsd - spendUsd, 4)
 

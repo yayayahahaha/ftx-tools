@@ -53,9 +53,34 @@ const list = [
 const colorConsole = function () {
   list.forEach(color => {
     console.log[color.key] = function (...args) {
-      return console.log.apply(null, [`${color.value}%s${reset}`, ...args])
+      return console.log.apply(null, [`${color.value}%s`, ...args, `${reset}`])
     }
   })
 }
 
-module.exports = { colorConsole }
+module.exports = {
+  colorConsole,
+  reset,
+  bright,
+  dim,
+  underscore,
+  blink,
+  reverse,
+  hidden,
+  fgBlack,
+  fgRed,
+  fgGreen,
+  fgYellow,
+  fgBlue,
+  fgMagenta,
+  fgCyan,
+  fgWhite,
+  bgBlack,
+  bgRed,
+  bgGreen,
+  bgYellow,
+  bgBlue,
+  bgMagenta,
+  bgCyan,
+  bgWhite
+}

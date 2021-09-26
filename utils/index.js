@@ -1,6 +1,7 @@
 const path = require('path')
 const crypto = require('crypto')
 const fs = require('fs')
+const { fgRed, fgGreen, reset } = require(path.resolve(__dirname, './console.js'))
 const { apiKey, secretKey } = (function () {
   try {
     const { apiKey, secretKey } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../input.json')))
@@ -117,30 +118,49 @@ function printResult(result) {
       spendUsd: rowSpendUsd,
       size: rowSize,
       averagePrice: rowAveragePrice,
-      tradeCount,
       revenuePersent,
       revenueUsd,
-      currentPrice,
       nowUsd
     } = result[name]
     const spendUsd = formatMoney(rowSpendUsd, 4)
     const size = formatMoney(rowSize, 6)
     const averagePrice = formatMoney(rowAveragePrice, 4)
 
+    const translate = (info => {
+      return Object.keys(info).reduce((map, key) => {
+        switch (key) {
+          case 'tradeCount':
+            map['交易次數'] = info[key]
+            break
+          case 'size':
+            map['持有數量'] = size
+            break
+          case 'averagePrice':
+            map['均價'] = averagePrice
+            break
+          case 'spendUsd':
+            map['成本'] = spendUsd
+            break
+          case 'currentPrice':
+            map['現價'] = info[key]
+            break
+          case 'nowUsd':
+            map['當前餘額'] = info[key]
+            break
+        }
+        return map
+      }, {})
+    })(result[name])
+
     totalSpendUsd += spendUsd
     totalRevenueUsd += revenueUsd
     totalNowUsd += nowUsd
 
+    const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
     console.log(`========== ${name} ==========`)
-    console.log(`損益: ${revenueUsd} USD`)
-    console.log(`損益率: ${revenuePersent}`)
-    console.log('')
-    console.log(`交易次數: ${tradeCount} 次`)
-    console.log(`持有數量: ${size}`)
-    console.log(`均價: ${averagePrice} USD`)
-    console.log(`成本: ${spendUsd} USD`)
-    console.log(`現價: ${currentPrice} USD`)
-    console.log(`當前餘額: ${nowUsd} USD`)
+    console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
+    console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
+    console.table({ [name]: { ...translate } })
     console.log('')
   })
 

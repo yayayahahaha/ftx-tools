@@ -1,6 +1,7 @@
 const path = require('path')
 const crypto = require('crypto')
 const fs = require('fs')
+const { fgRed, fgGreen, reset } = require(path.resolve(__dirname, './console.js'))
 const { apiKey, secretKey } = (function () {
   try {
     const { apiKey, secretKey } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../input.json')))
@@ -109,47 +110,73 @@ function printResult(result) {
     console.log('-無損益資訊可以顯示-')
     return
   }
+  console.log(`${fgGreen}綠色↑${reset} ${fgRed}紅色↓${reset}`)
   let totalSpendUsd = 0
   let totalRevenueUsd = 0
   let totalNowUsd = 0
-  Object.keys(result).forEach(name => {
-    const {
-      spendUsd: rowSpendUsd,
-      size: rowSize,
-      averagePrice: rowAveragePrice,
-      tradeCount,
-      revenuePersent,
-      revenueUsd,
-      currentPrice,
-      nowUsd
-    } = result[name]
-    const spendUsd = formatMoney(rowSpendUsd, 4)
-    const size = formatMoney(rowSize, 6)
-    const averagePrice = formatMoney(rowAveragePrice, 4)
+  Object.keys(result)
+    .sort((a, b) => result[b].spendUsd - result[a].spendUsd)
+    .forEach(name => {
+      const {
+        spendUsd: rowSpendUsd,
+        size: rowSize,
+        averagePrice: rowAveragePrice,
+        revenuePersent,
+        revenueUsd,
+        nowUsd
+      } = result[name]
+      const spendUsd = formatMoney(rowSpendUsd, 4)
+      const size = formatMoney(rowSize, 6)
+      const averagePrice = formatMoney(rowAveragePrice, 4)
 
-    totalSpendUsd += spendUsd
-    totalRevenueUsd += revenueUsd
-    totalNowUsd += nowUsd
+      const tableSort = ['持有數量', '均價', '現價', '成本', '當前餘額']
 
-    console.log(`========== ${name} ==========`)
-    console.log(`損益: ${revenueUsd} USD`)
-    console.log(`損益率: ${revenuePersent}`)
-    console.log('')
-    console.log(`交易次數: ${tradeCount} 次`)
-    console.log(`持有數量: ${size}`)
-    console.log(`均價: ${averagePrice} USD`)
-    console.log(`成本: ${spendUsd} USD`)
-    console.log(`現價: ${currentPrice} USD`)
-    console.log(`當前餘額: ${nowUsd} USD`)
-    console.log('')
-  })
+      const translate = (info => {
+        const result = Object.keys(info).reduce((map, key) => {
+          switch (key) {
+            case 'tradeCount':
+              map['交易次數'] = info[key]
+              break
+            case 'size':
+              map['持有數量'] = size
+              break
+            case 'averagePrice':
+              map['均價'] = averagePrice
+              break
+            case 'spendUsd':
+              map['成本'] = spendUsd
+              break
+            case 'currentPrice':
+              map['現價'] = info[key]
+              break
+            case 'nowUsd':
+              map['當前餘額'] = info[key]
+              break
+          }
+          return map
+        }, {})
+        return tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
+      })(result[name])
+
+      totalSpendUsd += spendUsd
+      totalRevenueUsd += revenueUsd
+      totalNowUsd += nowUsd
+
+      const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
+      console.log(`========== ${name} ==========`)
+      console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
+      console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
+      console.table({ [name]: { ...translate } })
+      console.log('')
+    })
 
   console.log('----------')
   console.log('')
 
+  const consoleColor = totalRevenueUsd > 0 ? fgGreen : fgRed
   console.log(`總投資金額: ${formatMoney(totalSpendUsd, 4)} USD`)
   console.log(`當前總餘額: ${formatMoney(totalNowUsd, 4)} USD`)
-  console.log(`總損益: ${formatMoney(totalRevenueUsd, 4)} USD`)
+  console.log(`總損益: ${consoleColor}${formatMoney(totalRevenueUsd, 4)}${reset} USD`)
 }
 
 module.exports = {

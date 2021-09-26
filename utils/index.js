@@ -1,7 +1,7 @@
 const path = require('path')
 const crypto = require('crypto')
 const fs = require('fs')
-const { fgRed, fgGreen, reset } = require(path.resolve(__dirname, './console.js'))
+const { bold, fgRed, fgGreen, bright, fgCyan, reset } = require(path.resolve(__dirname, './console.js'))
 const { apiKey, secretKey } = (function () {
   try {
     const { apiKey, secretKey } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../input.json')))
@@ -163,7 +163,7 @@ function printResult(result) {
       totalNowUsd += nowUsd
 
       const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
-      console.log(`========== ${name} ==========`)
+      console.log(`${bright}${fgCyan}---------- ${bold}${name}${reset}${bright}${fgCyan} ----------${reset}`)
       console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
       console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
       console.table({ [name]: { ...translate } })

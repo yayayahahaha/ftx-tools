@@ -110,6 +110,7 @@ function printResult(result) {
     console.log('-無損益資訊可以顯示-')
     return
   }
+  console.log(`${fgGreen}綠色↑${reset} ${fgRed}紅色↓${reset}`)
   let totalSpendUsd = 0
   let totalRevenueUsd = 0
   let totalNowUsd = 0
@@ -126,8 +127,10 @@ function printResult(result) {
     const size = formatMoney(rowSize, 6)
     const averagePrice = formatMoney(rowAveragePrice, 4)
 
+    const tableSort = ['持有數量', '均價', '現價', '成本', '當前餘額']
+
     const translate = (info => {
-      return Object.keys(info).reduce((map, key) => {
+      const result = Object.keys(info).reduce((map, key) => {
         switch (key) {
           case 'tradeCount':
             map['交易次數'] = info[key]
@@ -150,6 +153,7 @@ function printResult(result) {
         }
         return map
       }, {})
+      return tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
     })(result[name])
 
     totalSpendUsd += spendUsd
@@ -167,9 +171,10 @@ function printResult(result) {
   console.log('----------')
   console.log('')
 
+  const consoleColor = totalRevenueUsd > 0 ? fgGreen : fgRed
   console.log(`總投資金額: ${formatMoney(totalSpendUsd, 4)} USD`)
   console.log(`當前總餘額: ${formatMoney(totalNowUsd, 4)} USD`)
-  console.log(`總損益: ${formatMoney(totalRevenueUsd, 4)} USD`)
+  console.log(`總損益: ${consoleColor}${formatMoney(totalRevenueUsd, 4)}${reset} USD`)
 }
 
 module.exports = {

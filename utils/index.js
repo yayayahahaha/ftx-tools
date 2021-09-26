@@ -114,59 +114,61 @@ function printResult(result) {
   let totalSpendUsd = 0
   let totalRevenueUsd = 0
   let totalNowUsd = 0
-  Object.keys(result).forEach(name => {
-    const {
-      spendUsd: rowSpendUsd,
-      size: rowSize,
-      averagePrice: rowAveragePrice,
-      revenuePersent,
-      revenueUsd,
-      nowUsd
-    } = result[name]
-    const spendUsd = formatMoney(rowSpendUsd, 4)
-    const size = formatMoney(rowSize, 6)
-    const averagePrice = formatMoney(rowAveragePrice, 4)
+  Object.keys(result)
+    .sort((a, b) => result[b].spendUsd - result[a].spendUsd)
+    .forEach(name => {
+      const {
+        spendUsd: rowSpendUsd,
+        size: rowSize,
+        averagePrice: rowAveragePrice,
+        revenuePersent,
+        revenueUsd,
+        nowUsd
+      } = result[name]
+      const spendUsd = formatMoney(rowSpendUsd, 4)
+      const size = formatMoney(rowSize, 6)
+      const averagePrice = formatMoney(rowAveragePrice, 4)
 
-    const tableSort = ['持有數量', '均價', '現價', '成本', '當前餘額']
+      const tableSort = ['持有數量', '均價', '現價', '成本', '當前餘額']
 
-    const translate = (info => {
-      const result = Object.keys(info).reduce((map, key) => {
-        switch (key) {
-          case 'tradeCount':
-            map['交易次數'] = info[key]
-            break
-          case 'size':
-            map['持有數量'] = size
-            break
-          case 'averagePrice':
-            map['均價'] = averagePrice
-            break
-          case 'spendUsd':
-            map['成本'] = spendUsd
-            break
-          case 'currentPrice':
-            map['現價'] = info[key]
-            break
-          case 'nowUsd':
-            map['當前餘額'] = info[key]
-            break
-        }
-        return map
-      }, {})
-      return tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
-    })(result[name])
+      const translate = (info => {
+        const result = Object.keys(info).reduce((map, key) => {
+          switch (key) {
+            case 'tradeCount':
+              map['交易次數'] = info[key]
+              break
+            case 'size':
+              map['持有數量'] = size
+              break
+            case 'averagePrice':
+              map['均價'] = averagePrice
+              break
+            case 'spendUsd':
+              map['成本'] = spendUsd
+              break
+            case 'currentPrice':
+              map['現價'] = info[key]
+              break
+            case 'nowUsd':
+              map['當前餘額'] = info[key]
+              break
+          }
+          return map
+        }, {})
+        return tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
+      })(result[name])
 
-    totalSpendUsd += spendUsd
-    totalRevenueUsd += revenueUsd
-    totalNowUsd += nowUsd
+      totalSpendUsd += spendUsd
+      totalRevenueUsd += revenueUsd
+      totalNowUsd += nowUsd
 
-    const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
-    console.log(`========== ${name} ==========`)
-    console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
-    console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
-    console.table({ [name]: { ...translate } })
-    console.log('')
-  })
+      const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
+      console.log(`========== ${name} ==========`)
+      console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
+      console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
+      console.table({ [name]: { ...translate } })
+      console.log('')
+    })
 
   console.log('----------')
   console.log('')

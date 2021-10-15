@@ -1,4 +1,5 @@
 // TODO language stuff
+// TODO 睡覺前把所有剩餘的錢包的所有幣種都借出，然後睡醒後再全部停借
 
 const path = require('path')
 const { getWalletBalance, sendLendingOffer } = require(path.resolve(__dirname, './api/index.js'))

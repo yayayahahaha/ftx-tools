@@ -2,6 +2,7 @@
 // TODO language stuff
 
 // TODO 總資產佔比 -> 添加 verbose 參數才顯示之類的?
+// TODO 處理cache 的問題: 記錄每一次呼叫後的時戳，往前的做cache、往後的當start_time 後以當前時戳做 end_time
 
 const path = require('path')
 const { arrayToMap, formatMoney, printResult } = require(path.resolve(__dirname, './utils/index.js'))

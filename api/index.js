@@ -12,6 +12,8 @@ function request(fullPath, config = {}) {
       .catch(e => [null, e])
   })
 }
+
+// TODO 透過 input.json 處理 start_time, end_time 的可動項目
 function timeParams(config = {}) {
   return (({ start_time, end_time }) => ({ start_time, end_time }))(
     Object.assign(

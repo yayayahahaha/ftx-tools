@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "lending_offer": "node happy_farm.js",
+    "lending_history": "node lending_history.js",
     "earn_current": "node earn_current.js"
   },
   "keywords": [],

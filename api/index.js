@@ -12,6 +12,8 @@ function request(fullPath, config = {}) {
       .catch(e => [null, e])
   })
 }
+
+// TODO 透過 input.json 處理 start_time, end_time 的可動項目
 function timeParams(config = {}) {
   return (({ start_time, end_time }) => ({ start_time, end_time }))(
     Object.assign(
@@ -101,6 +103,14 @@ async function getSubAccounts() {
   return request(fullPath(path), { headers })
 }
 
+async function getSpotMarginHistory(subAccount = '') {
+  const formStr = qs.stringify(timeParams())
+
+  const path = `/api/spot_margin/lending_history?${formStr || ''}`
+  const headers = createHeader({ path, subAccount })
+  return request(fullPath(path), { headers })
+}
+
 module.exports = {
   getWalletBalance,
   sendLendingOffer,
@@ -109,5 +119,6 @@ module.exports = {
   getSubAccounts,
   getDepositsHistory,
   getWithdrawalsHistory,
-  getHistoricalPrices
+  getHistoricalPrices,
+  getSpotMarginHistory
 }

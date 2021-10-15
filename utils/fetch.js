@@ -133,7 +133,7 @@ async function fetchWithdrawals(subAccount) {
 async function fetchSubAccount() {
   const [result, error] = await getSubAccounts()
   if (error) {
-    console.log('[ERROR] getSubAccounts: 取得子帳戶列表失敗!')
+    console.log('[ERROR] getSubAccounts: 取得子帳戶列表失敗!', error)
     return [null, error]
   }
 

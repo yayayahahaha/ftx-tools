@@ -34,6 +34,8 @@ async function init() {
     .map(result => result[0])
     .reduce((map, account) => {
       Object.keys(account).forEach(market => {
+        if (account[market].spendUsd < 0) return // TODO 到底為什麼會出現負數..
+
         if (!map[market]) {
           map[market] = account[market]
           return

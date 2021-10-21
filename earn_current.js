@@ -129,7 +129,7 @@ async function fetchFills(subAccount) {
     return result
   }
   async function _normalizedFills(list) {
-    const promises = list.map(fill => __mapCurrency(fill))
+    const promises = list.filter(fill => /^\w+\/\w+$/.test(fill.market)).map(fill => __mapCurrency(fill))
     return await Promise.all(promises)
       .then(result => [result.reduce((list, item) => list.concat(item), []), null])
       .catch(error => [null, error])
@@ -155,6 +155,7 @@ async function fetchFills(subAccount) {
         const timestamp = Math.floor(new Date(fill.time).valueOf() / 1000)
         const baseMarketName = `${fill.baseCurrency}/USD`
         const quoteMarketName = `${fill.quoteCurrency}/USD`
+
         const basePromise = getHistoricalPrices(subAccount, { marketName: baseMarketName, timestamp })
         const quotePromise = getHistoricalPrices(subAccount, { marketName: quoteMarketName, timestamp })
 

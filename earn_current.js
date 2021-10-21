@@ -138,7 +138,9 @@ async function fetchFills(subAccount, sumCount) {
     return result
   }
   async function _normalizedFills(list, sumCount) {
-    const promises = list.filter(fill => /^\w+\/\w+$/.test(fill.market)).map(fill => __mapCurrency(fill))
+    const promises = list
+      .filter(fill => /^\w+\/\w+$/.test(fill.market) || fill.market === null)
+      .map(fill => __mapCurrency(fill))
 
     sumCount.nonSpotGoods += list.length - promises.length
 

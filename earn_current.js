@@ -11,6 +11,7 @@ const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = requi
   './utils/fetch.js'
 ))
 const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
+const { bold, fgYellow, reset } = require(path.resolve(__dirname, './utils/console.js'))
 
 init()
 
@@ -19,7 +20,8 @@ async function init() {
   if (subAccountError) return
   subAccounts.push({ nickname: '' /* 主錢包 */ })
 
-  const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname))
+  const sumCount = { nonSpotGoods: 0 }
+  const subAccountInfoPromise = subAccounts.map(account => fetchFills(account.nickname, sumCount))
   const subAccountInfoResult = await Promise.all(subAccountInfoPromise)
   const hasError = subAccountInfoResult.map(result => result[1]).filter(error => error).length
   if (hasError) {
@@ -60,9 +62,16 @@ async function init() {
   }, {})
 
   printResult(result)
+  if (sumCount.nonSpotGoods) {
+    console.log('')
+    console.log(
+      `${bold}${fgYellow}--交易紀錄裡有 ${sumCount.nonSpotGoods} 筆非現貨交易的紀錄, 這些紀錄損益將會被忽略--${reset}`
+    )
+    console.log('')
+  }
 }
 
-async function fetchFills(subAccount) {
+async function fetchFills(subAccount, sumCount) {
   const fillsReq = getFills(subAccount)
   const depositsReq = fetchDeposits(subAccount)
   const withdrawalsReq = fetchWithdrawals(subAccount)
@@ -78,7 +87,7 @@ async function fetchFills(subAccount) {
   }
 
   const concatList = [...fills, ...deposits, ...withdrawals]
-  const [list, formatError] = await _normalizedFills(concatList)
+  const [list, formatError] = await _normalizedFills(concatList, sumCount)
   if (formatError) {
     console.log('[ERROR] fetchFills: _normalizedFills 失敗!', formatError)
     return [null, formatError]
@@ -128,8 +137,13 @@ async function fetchFills(subAccount) {
     }, {})
     return result
   }
-  async function _normalizedFills(list) {
-    const promises = list.map(fill => __mapCurrency(fill))
+  async function _normalizedFills(list, sumCount) {
+    const promises = list
+      .filter(fill => /^\w+\/\w+$/.test(fill.market) || fill.market === null)
+      .map(fill => __mapCurrency(fill))
+
+    sumCount.nonSpotGoods += list.length - promises.length
+
     return await Promise.all(promises)
       .then(result => [result.reduce((list, item) => list.concat(item), []), null])
       .catch(error => [null, error])
@@ -155,6 +169,7 @@ async function fetchFills(subAccount) {
         const timestamp = Math.floor(new Date(fill.time).valueOf() / 1000)
         const baseMarketName = `${fill.baseCurrency}/USD`
         const quoteMarketName = `${fill.quoteCurrency}/USD`
+
         const basePromise = getHistoricalPrices(subAccount, { marketName: baseMarketName, timestamp })
         const quotePromise = getHistoricalPrices(subAccount, { marketName: quoteMarketName, timestamp })
 

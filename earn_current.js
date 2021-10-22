@@ -13,6 +13,8 @@ const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = requi
 const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
 const { bold, fgYellow, reset } = require(path.resolve(__dirname, './utils/console.js'))
 
+const fs = require('fs')
+
 init()
 
 async function init() {
@@ -49,6 +51,7 @@ async function init() {
       return map
     }, {})
 
+  // 取得當前行情
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))
   if (marketsError) return
 
@@ -83,6 +86,16 @@ async function fetchFills(subAccount, sumCount) {
     depositsReq,
     withdrawalsReq
   ])
+
+  let json = null
+  try {
+    json = JSON.parse(fs.readFileSync('./fills.json', 'utf-8'))
+  } catch (e) {
+    json = []
+  }
+  fs.writeFileSync('./fills.json', JSON.stringify(json.concat(fills), null, 2))
+
+  return [null, {}] // for step testing
   if (fillsError || depositsError || withdrawalsError) {
     console.log('[ERROR] fetchFills: 取得資料失敗!')
     return [null, { fillsError, depositsError, withdrawalsError }]

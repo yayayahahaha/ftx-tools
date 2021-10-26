@@ -39,7 +39,7 @@ async function init() {
 
   const map = arrayToMap(rowFills, 'market', { isMulti: true })
   const fills = _addThemAll(map)
-  fs.writeFileSync('./result.json', JSON.stringify(fills, null, 2))
+  // fs.writeFileSync('./result.json', JSON.stringify(fills, null, 2))
 
   // 取得當前行情
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))

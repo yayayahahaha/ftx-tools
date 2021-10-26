@@ -34,22 +34,27 @@ async function init() {
   // 將subAccount 的項目加總
   const fills = subAccountInfoResult
     .map(result => result[0])
-    .reduce((map, account) => {
-      Object.keys(account).forEach(market => {
-        if (account[market].spendUsd < 0) return // TODO 到底為什麼會出現負數..
+    .reduce((list, subAccountResult) => list.concat(subAccountResult), [])
+    .sort((a, b) => new Date(a.time).valueOf() - new Date(b.time).valueOf())
 
-        if (!map[market]) {
-          map[market] = account[market]
-          return
-        }
+  fs.writeFileSync('./result.json', JSON.stringify(fills, null, 2))
 
-        Object.keys(account[market]).forEach(moneyKey => {
-          map[market][moneyKey] += account[market][moneyKey]
-        })
+  return [].reduce((map, account) => {
+    Object.keys(account).forEach(market => {
+      if (account[market].spendUsd < 0) return // TODO 到底為什麼會出現負數..
+
+      if (!map[market]) {
+        map[market] = account[market]
+        return
+      }
+
+      Object.keys(account[market]).forEach(moneyKey => {
+        map[market][moneyKey] += account[market][moneyKey]
       })
+    })
 
-      return map
-    }, {})
+    return map
+  }, {})
 
   // 取得當前行情
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))
@@ -87,15 +92,6 @@ async function fetchFills(subAccount, sumCount) {
     withdrawalsReq
   ])
 
-  let json = null
-  try {
-    json = JSON.parse(fs.readFileSync('./fills.json', 'utf-8'))
-  } catch (e) {
-    json = []
-  }
-  fs.writeFileSync('./fills.json', JSON.stringify(json.concat(fills), null, 2))
-
-  return [null, {}] // for step testing
   if (fillsError || depositsError || withdrawalsError) {
     console.log('[ERROR] fetchFills: 取得資料失敗!')
     return [null, { fillsError, depositsError, withdrawalsError }]
@@ -108,9 +104,10 @@ async function fetchFills(subAccount, sumCount) {
     return [null, formatError]
   }
 
-  const map = arrayToMap(list, 'market', { isMulti: true })
-  const result = _addThemAll(map)
-  return [result, null]
+  // const map = arrayToMap(list, 'market', { isMulti: true })
+  // const result = _addThemAll(map)
+  typeof _addThemAll // TODO 還沒使用
+  return [list, null]
 
   function _addThemAll(map) {
     let result = Object.keys(map).reduce((info, market) => {
@@ -154,6 +151,7 @@ async function fetchFills(subAccount, sumCount) {
   }
   async function _normalizedFills(list, sumCount) {
     const promises = list
+      // 僅接受現貨 or 兌換項目, 不提供合約
       .filter(fill => /^\w+\/\w+$/.test(fill.market) || fill.market === null)
       .map(fill => __mapCurrency(fill))
 
@@ -203,7 +201,8 @@ async function fetchFills(subAccount, sumCount) {
           size: fill.size,
           price: basePrice,
           feeCurrency: fill.feeCurrency,
-          fee: fill.fee
+          fee: fill.fee,
+          time: fill.time
         }
         const quote = {
           market: `${fill.quoteCurrency}/USD`,
@@ -211,7 +210,8 @@ async function fetchFills(subAccount, sumCount) {
           size: fill.size * fill.price,
           price: quotePrice,
           feeCurrency: fill.feeCurrency,
-          fee: fill.fee
+          fee: fill.fee,
+          time: fill.time
         }
         return [base, quote]
       }

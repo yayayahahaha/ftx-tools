@@ -32,29 +32,14 @@ async function init() {
   }
 
   // 將subAccount 的項目加總
-  const fills = subAccountInfoResult
+  const rowFills = subAccountInfoResult
     .map(result => result[0])
     .reduce((list, subAccountResult) => list.concat(subAccountResult), [])
     .sort((a, b) => new Date(a.time).valueOf() - new Date(b.time).valueOf())
 
+  const map = arrayToMap(rowFills, 'market', { isMulti: true })
+  const fills = _addThemAll(map)
   fs.writeFileSync('./result.json', JSON.stringify(fills, null, 2))
-
-  return [].reduce((map, account) => {
-    Object.keys(account).forEach(market => {
-      if (account[market].spendUsd < 0) return // TODO 到底為什麼會出現負數..
-
-      if (!map[market]) {
-        map[market] = account[market]
-        return
-      }
-
-      Object.keys(account[market]).forEach(moneyKey => {
-        map[market][moneyKey] += account[market][moneyKey]
-      })
-    })
-
-    return map
-  }, {})
 
   // 取得當前行情
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))
@@ -78,6 +63,47 @@ async function init() {
       `${bold}${fgYellow}--交易紀錄裡有 ${sumCount.nonSpotGoods} 筆非現貨交易的紀錄, 這些紀錄損益將會被忽略--${reset}`
     )
     console.log('')
+  }
+
+  function _addThemAll(map) {
+    let result = Object.keys(map).reduce((info, market) => {
+      info[market] = info[market] || { spendUsd: 0, size: 0, averagePrice: 0 }
+      const marketInfo = info[market]
+
+      const tradeList = map[market]
+      marketInfo.tradeCount = tradeList.length
+      tradeList.forEach(trade => {
+        const { side, price, size, feeCurrency, fee } = trade
+        let unit = 0
+        switch (side) {
+          case 'buy':
+            unit = 1
+            break
+          case 'sell':
+            unit = -1
+            break
+          default:
+            console.log(`[ERROR] _addThemAll: side 既不是buy 也不是 sell, 是 ${side} !`)
+            return
+        }
+
+        marketInfo.spendUsd += (side === 'buy' ? price : marketInfo.averagePrice) * size * unit
+        marketInfo.size += size * unit
+        marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0
+
+        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || { spendUsd: 0, size: 0, averagePrice: 0 }
+        const feeInfo = info[`${feeCurrency}/USD`]
+        feeInfo.size += fee * unit
+      })
+
+      return info
+    }, {})
+    result = Object.keys(result).reduce((info, market) => {
+      if (result[market].size <= 0.000001) return info
+      info[market] = result[market]
+      return info
+    }, {})
+    return result
   }
 }
 
@@ -103,52 +129,8 @@ async function fetchFills(subAccount, sumCount) {
     console.log('[ERROR] fetchFills: _normalizedFills 失敗!', formatError)
     return [null, formatError]
   }
-
-  // const map = arrayToMap(list, 'market', { isMulti: true })
-  // const result = _addThemAll(map)
-  typeof _addThemAll // TODO 還沒使用
   return [list, null]
 
-  function _addThemAll(map) {
-    let result = Object.keys(map).reduce((info, market) => {
-      info[market] = info[market] || { spendUsd: 0, size: 0, averagePrice: 0 }
-      const marketInfo = info[market]
-
-      const tradeList = map[market]
-      marketInfo.tradeCount = tradeList.length
-      tradeList.forEach(trade => {
-        const { side, price, size, feeCurrency, fee } = trade
-        let unit = 0
-        switch (side) {
-          case 'buy':
-            unit = 1
-            break
-          case 'sell':
-            unit = -1
-            break
-          default:
-            console.log(`[ERROR] _addThemAll: side 既不是buy 也不是 sell, 是 ${side} !`)
-            return
-        }
-
-        marketInfo.spendUsd += price * size * unit
-        marketInfo.size += size * unit
-        marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0
-
-        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || { spendUsd: 0, size: 0, averagePrice: 0 }
-        const feeInfo = info[`${feeCurrency}/USD`]
-        feeInfo.size += fee * unit
-      })
-
-      return info
-    }, {})
-    result = Object.keys(result).reduce((info, market) => {
-      if (result[market].size <= 0.000001) return info
-      info[market] = result[market]
-      return info
-    }, {})
-    return result
-  }
   async function _normalizedFills(list, sumCount) {
     const promises = list
       // 僅接受現貨 or 兌換項目, 不提供合約

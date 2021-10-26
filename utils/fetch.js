@@ -28,6 +28,7 @@ async function fetchDeposits(subAccount) {
     console.log('[ERROR] fetchDepositsHistory: getDepositsHistory 失敗!', error)
     return [null, error]
   }
+
   const depositsPromise = deposits
     .filter(deposit => {
       switch (deposit.coin) {
@@ -41,31 +42,34 @@ async function fetchDeposits(subAccount) {
       }
       return deposit.status === 'confirmed'
     })
-    .map(deposit =>
-      new Promise(resolve => {
+    .map(deposit => {
+      return new Promise((resolve, reject) => {
         const marketName = `${deposit.coin}/USD`
         const timestamp = Math.floor(new Date(deposit.time).valueOf() / 1000)
-        return resolve(getHistoricalPrices(subAccount, { marketName, timestamp }))
-      }).then(historyResponse => {
-        const [history, historyFailed] = historyResponse
-        if (historyFailed) throw historyFailed
 
-        const price = history[0].close
-        return {
-          id: `__deposit-${v4()}`,
-          baseCurrency: deposit.coin,
-          quoteCurrency: 'USD',
-          type: 'deposit',
-          market: `${deposit.coin}/USD`,
-          side: 'buy',
-          size: deposit.size,
-          time: deposit.time,
-          price,
-          feeCurrency: deposit.coin || 'USD',
-          fee: deposit.fee || 0
-        }
+        ;(async () => {
+          const [history, historyFailed] = await getHistoricalPrices(subAccount, { marketName, timestamp })
+          if (historyFailed) reject(historyFailed)
+
+          const price = history[0].close
+          const result = {
+            id: `__deposit-${v4()}`,
+            baseCurrency: deposit.coin,
+            quoteCurrency: 'USD',
+            type: 'deposit',
+            market: `${deposit.coin}/USD`,
+            side: 'buy',
+            size: deposit.size,
+            time: deposit.time,
+            price,
+            feeCurrency: deposit.coin || 'USD',
+            fee: deposit.fee || 0
+          }
+
+          return resolve(result)
+        })()
       })
-    )
+    })
   const [depositsResult, depositsFailed] = await Promise.all(depositsPromise)
     .then(response => [response, null])
     .catch(error => [null, error])
@@ -95,31 +99,33 @@ async function fetchWithdrawals(subAccount) {
       }
       return withdrawal.status === 'complete'
     })
-    .map(withdrawal =>
-      new Promise(resolve => {
+    .map(withdrawal => {
+      return new Promise((resolve, reject) => {
         const marketName = `${withdrawal.coin}/USD`
         const timestamp = Math.floor(new Date(withdrawal.time).valueOf() / 1000)
-        return resolve(getHistoricalPrices(subAccount, { marketName, timestamp }))
-      }).then(historyResponse => {
-        const [history, historyFailed] = historyResponse
-        if (historyFailed) throw historyFailed
 
-        const price = history[0].close
-        return {
-          id: `__withdrawal-${v4()}`,
-          baseCurrency: withdrawal.coin,
-          quoteCurrency: 'USD',
-          type: 'withdrawal',
-          market: `${withdrawal.coin}/USD`,
-          side: 'sell',
-          size: withdrawal.size,
-          time: withdrawal.time,
-          price,
-          feeCurrency: withdrawal.coin || 'USD',
-          fee: withdrawal.fee || 0
-        }
+        ;(async () => {
+          const [history, historyFailed] = await getHistoricalPrices(subAccount, { marketName, timestamp })
+          if (historyFailed) reject(historyFailed)
+
+          const price = history[0].close
+          const result = {
+            id: `__withdrawal-${v4()}`,
+            baseCurrency: withdrawal.coin,
+            quoteCurrency: 'USD',
+            type: 'withdrawal',
+            market: `${withdrawal.coin}/USD`,
+            side: 'sell',
+            size: withdrawal.size,
+            time: withdrawal.time,
+            price,
+            feeCurrency: withdrawal.coin || 'USD',
+            fee: withdrawal.fee || 0
+          }
+          return resolve(result)
+        })()
       })
-    )
+    })
   const [withdrawalsResult, withdrawalsFailed] = await Promise.all(withdrawalsPromise)
     .then(response => [response, null])
     .catch(error => [null, error])

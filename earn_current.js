@@ -13,6 +13,8 @@ const { fetchSubAccount, fetchMarkets, fetchDeposits, fetchWithdrawals } = requi
 const { getHistoricalPrices, getFills } = require(path.resolve(__dirname, './api/index.js'))
 const { bold, fgYellow, reset } = require(path.resolve(__dirname, './utils/console.js'))
 
+const fs = require('fs')
+
 init()
 
 async function init() {
@@ -30,25 +32,16 @@ async function init() {
   }
 
   // 將subAccount 的項目加總
-  const fills = subAccountInfoResult
+  const rowFills = subAccountInfoResult
     .map(result => result[0])
-    .reduce((map, account) => {
-      Object.keys(account).forEach(market => {
-        if (account[market].spendUsd < 0) return // TODO 到底為什麼會出現負數..
+    .reduce((list, subAccountResult) => list.concat(subAccountResult), [])
+    .sort((a, b) => new Date(a.time).valueOf() - new Date(b.time).valueOf())
 
-        if (!map[market]) {
-          map[market] = account[market]
-          return
-        }
+  const map = arrayToMap(rowFills, 'market', { isMulti: true })
+  const fills = _addThemAll(map)
+  fs.writeFileSync('./result.json', JSON.stringify(fills, null, 2))
 
-        Object.keys(account[market]).forEach(moneyKey => {
-          map[market][moneyKey] += account[market][moneyKey]
-        })
-      })
-
-      return map
-    }, {})
-
+  // 取得當前行情
   const [markets, marketsError] = await fetchMarkets(Object.keys(fills))
   if (marketsError) return
 
@@ -71,33 +64,6 @@ async function init() {
     )
     console.log('')
   }
-}
-
-async function fetchFills(subAccount, sumCount) {
-  const fillsReq = getFills(subAccount)
-  const depositsReq = fetchDeposits(subAccount)
-  const withdrawalsReq = fetchWithdrawals(subAccount)
-
-  const [[fills, fillsError], [deposits, depositsError], [withdrawals, withdrawalsError]] = await Promise.all([
-    fillsReq,
-    depositsReq,
-    withdrawalsReq
-  ])
-  if (fillsError || depositsError || withdrawalsError) {
-    console.log('[ERROR] fetchFills: 取得資料失敗!')
-    return [null, { fillsError, depositsError, withdrawalsError }]
-  }
-
-  const concatList = [...fills, ...deposits, ...withdrawals]
-  const [list, formatError] = await _normalizedFills(concatList, sumCount)
-  if (formatError) {
-    console.log('[ERROR] fetchFills: _normalizedFills 失敗!', formatError)
-    return [null, formatError]
-  }
-
-  const map = arrayToMap(list, 'market', { isMulti: true })
-  const result = _addThemAll(map)
-  return [result, null]
 
   function _addThemAll(map) {
     let result = Object.keys(map).reduce((info, market) => {
@@ -121,7 +87,7 @@ async function fetchFills(subAccount, sumCount) {
             return
         }
 
-        marketInfo.spendUsd += price * size * unit
+        marketInfo.spendUsd += (side === 'buy' ? price : marketInfo.averagePrice) * size * unit
         marketInfo.size += size * unit
         marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0
 
@@ -139,8 +105,35 @@ async function fetchFills(subAccount, sumCount) {
     }, {})
     return result
   }
+}
+
+async function fetchFills(subAccount, sumCount) {
+  const fillsReq = getFills(subAccount)
+  const depositsReq = fetchDeposits(subAccount)
+  const withdrawalsReq = fetchWithdrawals(subAccount)
+
+  const [[fills, fillsError], [deposits, depositsError], [withdrawals, withdrawalsError]] = await Promise.all([
+    fillsReq,
+    depositsReq,
+    withdrawalsReq
+  ])
+
+  if (fillsError || depositsError || withdrawalsError) {
+    console.log('[ERROR] fetchFills: 取得資料失敗!')
+    return [null, { fillsError, depositsError, withdrawalsError }]
+  }
+
+  const concatList = [...fills, ...deposits, ...withdrawals]
+  const [list, formatError] = await _normalizedFills(concatList, sumCount)
+  if (formatError) {
+    console.log('[ERROR] fetchFills: _normalizedFills 失敗!', formatError)
+    return [null, formatError]
+  }
+  return [list, null]
+
   async function _normalizedFills(list, sumCount) {
     const promises = list
+      // 僅接受現貨 or 兌換項目, 不提供合約
       .filter(fill => /^\w+\/\w+$/.test(fill.market) || fill.market === null)
       .map(fill => __mapCurrency(fill))
 
@@ -190,7 +183,8 @@ async function fetchFills(subAccount, sumCount) {
           size: fill.size,
           price: basePrice,
           feeCurrency: fill.feeCurrency,
-          fee: fill.fee
+          fee: fill.fee,
+          time: fill.time
         }
         const quote = {
           market: `${fill.quoteCurrency}/USD`,
@@ -198,7 +192,8 @@ async function fetchFills(subAccount, sumCount) {
           size: fill.size * fill.price,
           price: quotePrice,
           feeCurrency: fill.feeCurrency,
-          fee: fill.fee
+          fee: fill.fee,
+          time: fill.time
         }
         return [base, quote]
       }

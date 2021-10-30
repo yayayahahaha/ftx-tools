@@ -121,15 +121,24 @@ function printResult(result) {
         spendUsd: rowSpendUsd,
         size: rowSize,
         averagePrice: rowAveragePrice,
+        realizedAveragePrice: rawRealizedAveragePrice,
+        realizedSize: rawRealizedSize,
+        realizedAverageCost: rawRealizedAverageCost,
         revenuePersent,
+        realizedRevenuePercent,
         revenueUsd,
+        realizeRevenueUsd,
         nowUsd
       } = result[name]
       const spendUsd = formatMoney(rowSpendUsd, 4)
       const size = formatMoney(rowSize, 6)
       const averagePrice = formatMoney(rowAveragePrice, 4)
+      const realizedAveragePrice = formatMoney(rawRealizedAveragePrice, 4)
+      const realizedSize = formatMoney(rawRealizedSize, 6)
+      const realizedAverageCost = formatMoney(rawRealizedAverageCost, 4)
 
       const tableSort = ['持有數量', '均價', '現價', '成本', '當前餘額']
+      const realizedTableSort = ['已實現數量', '已實現均價', '已實現平均成本']
 
       const translate = (info => {
         const result = Object.keys(info).reduce((map, key) => {
@@ -152,10 +161,22 @@ function printResult(result) {
             case 'nowUsd':
               map['當前餘額'] = info[key]
               break
+            case 'realizedSize':
+              map['已實現數量'] = realizedSize
+              break
+            case 'realizedAveragePrice':
+              map['已實現均價'] = realizedAveragePrice
+              break
+            case 'realizedAverageCost':
+              map['已實現平均成本'] = realizedAverageCost
+              break
           }
           return map
         }, {})
-        return tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
+        return {
+          unRealizedTable: tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {}),
+          realizedTable: realizedTableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
+        }
       })(result[name])
 
       totalSpendUsd += spendUsd
@@ -166,7 +187,10 @@ function printResult(result) {
       console.log(`${bright}${fgCyan}---------- ${bold}${name}${reset}${bright}${fgCyan} ----------${reset}`)
       console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
       console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
-      console.table({ [name]: { ...translate } })
+      console.table({ [name]: { ...translate.unRealizedTable } })
+      console.log(`已實現損益: ${consoleColor}${realizeRevenueUsd}${reset} USD`)
+      console.log(`已實現損益率: ${consoleColor}${realizedRevenuePercent}${reset} %`)
+      console.table({ [name]: { ...translate.realizedTable } })
       console.log('')
     })
 

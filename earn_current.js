@@ -47,12 +47,22 @@ async function init() {
 
   const result = markets.reduce((map, market) => {
     const { name, price: currentPrice } = market
-    const { averagePrice, spendUsd, size } = fills[name]
+    const { averagePrice, spendUsd, size, realizedAveragePrice, realizedAverageCost, realizedUsd, realizedCost } = fills[name]
     const revenuePersent = `${formatMoney(((currentPrice - averagePrice) * 100) / averagePrice, 4)}`
+    const realizedRevenuePercent = realizedAverageCost ? `${formatMoney(((realizedAveragePrice - realizedAverageCost) * 100) / realizedAverageCost, 4)}` : 0
     const nowUsd = formatMoney(size * currentPrice, 4)
     const revenueUsd = formatMoney(nowUsd - spendUsd, 4)
+    const realizeRevenueUsd = formatMoney(realizedUsd - realizedCost, 4)
 
-    map[name] = Object.assign({}, fills[name], { name, revenuePersent, revenueUsd, currentPrice, nowUsd })
+    map[name] = Object.assign({}, fills[name], { 
+      name, 
+      revenuePersent, 
+      realizedRevenuePercent, 
+      revenueUsd, 
+      realizeRevenueUsd, 
+      currentPrice, 
+      nowUsd 
+    })
     return map
   }, {})
 

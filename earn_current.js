@@ -67,7 +67,16 @@ async function init() {
 
   function _addThemAll(map) {
     let result = Object.keys(map).reduce((info, market) => {
-      info[market] = info[market] || { spendUsd: 0, size: 0, averagePrice: 0 }
+      info[market] = info[market] || {
+        realizedUsd: 0,
+        realizedCost: 0,
+        realizedSize: 0,
+        realizedAveragePrice: 0,
+        realizedAverageCost: 0,
+        spendUsd: 0,
+        size: 0,
+        averagePrice: 0
+      }
       const marketInfo = info[market]
 
       const tradeList = map[market]
@@ -87,6 +96,16 @@ async function init() {
             return
         }
 
+        // 已實現損益
+        if(side === 'sell') {
+          marketInfo.realizedUsd += price * size
+          marketInfo.realizedCost += marketInfo.averagePrice * size
+          marketInfo.realizedSize += size
+          marketInfo.realizedAveragePrice = marketInfo.realizedSize ? marketInfo.realizedUsd / marketInfo.realizedSize : 0
+          marketInfo.realizedAverageCost = marketInfo.realizedSize ? marketInfo.realizedCost / marketInfo.realizedSize : 0
+        }
+
+        // 未實現損益
         marketInfo.spendUsd += (side === 'buy' ? price : marketInfo.averagePrice) * size * unit
         marketInfo.size += size * unit
         marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0

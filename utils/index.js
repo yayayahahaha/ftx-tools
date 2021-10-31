@@ -184,12 +184,13 @@ function printResult(result) {
       totalNowUsd += nowUsd
 
       const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
+      const realizedConsoleColor = realizeRevenueUsd > 0 ? fgGreen : fgRed
       console.log(`${bright}${fgCyan}---------- ${bold}${name}${reset}${bright}${fgCyan} ----------${reset}`)
       console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
       console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
       console.table({ [name]: { ...translate.unRealizedTable } })
-      console.log(`已實現損益: ${consoleColor}${realizeRevenueUsd}${reset} USD`)
-      console.log(`已實現損益率: ${consoleColor}${realizedRevenuePercent}${reset} %`)
+      console.log(`已實現損益: ${realizedConsoleColor}${realizeRevenueUsd}${reset} USD`)
+      console.log(`已實現損益率: ${realizedConsoleColor}${realizedRevenuePercent}${reset} %`)
       console.table({ [name]: { ...translate.realizedTable } })
       console.log('')
     })
@@ -201,6 +202,7 @@ function printResult(result) {
   console.log(`總投資金額: ${formatMoney(totalSpendUsd, 4)} USD`)
   console.log(`當前總餘額: ${formatMoney(totalNowUsd, 4)} USD`)
   console.log(`總損益: ${consoleColor}${formatMoney(totalRevenueUsd, 4)}${reset} USD`)
+  console.log(`總損益率: ${consoleColor}${formatMoney((totalRevenueUsd * 100)/ totalSpendUsd, 4)}${reset} %`)
 }
 
 module.exports = {

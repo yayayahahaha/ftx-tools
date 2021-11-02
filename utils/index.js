@@ -173,10 +173,10 @@ function printResult(result, mode = 'unrealized') {
         }, {})
 
         let returnObject = {
-          unRealizedTable: tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {}),
+          unRealizedTable: tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
         }
         // 已實現損益
-        if(mode === 'realized') {
+        if (mode === 'realized') {
           const realizedTableSort = ['已實現數量', '已實現均價', '已實現平均成本']
           returnObject = Object.assign({}, returnObject, {
             realizedTable: realizedTableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
@@ -195,9 +195,9 @@ function printResult(result, mode = 'unrealized') {
       console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
       console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
       console.table({ [name]: { ...translate.unRealizedTable } })
-      
+
       // 已實現損益
-      if(mode === 'realized') {
+      if (mode === 'realized') {
         const realizedConsoleColor = realizeRevenueUsd > 0 ? fgGreen : fgRed
         console.log(`已實現損益: ${realizedConsoleColor}${realizeRevenueUsd}${reset} USD`)
         console.log(`已實現損益率: ${realizedConsoleColor}${realizedRevenuePercent}${reset} %`)
@@ -214,7 +214,7 @@ function printResult(result, mode = 'unrealized') {
   console.log(`總投資金額: ${formatMoney(totalSpendUsd, 4)} USD`)
   console.log(`當前總餘額: ${formatMoney(totalNowUsd, 4)} USD`)
   console.log(`總損益: ${consoleColor}${formatMoney(totalRevenueUsd, 4)}${reset} USD`)
-  console.log(`總損益率: ${consoleColor}${formatMoney((totalRevenueUsd * 100)/ totalSpendUsd, 4)}${reset} %`)
+  console.log(`總損益率: ${consoleColor}${formatMoney((totalRevenueUsd * 100) / totalSpendUsd, 4)}${reset} %`)
 }
 
 module.exports = {

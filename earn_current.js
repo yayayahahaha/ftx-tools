@@ -74,7 +74,7 @@ async function init(presentMode) {
     const revenuePersent = `${formatMoney(((currentPrice - averagePrice) * 100) / averagePrice, 4)}`
     const nowUsd = formatMoney(size * currentPrice, 4)
     const revenueUsd = formatMoney(nowUsd - spendUsd, 4)
-    let fillsInfo = {
+    const fillsInfo = {
       name,
       currentPrice,
       revenuePersent,
@@ -86,7 +86,7 @@ async function init(presentMode) {
       const { realizedAveragePrice, realizedAverageCost, realizedUsd, realizedCost } = fills[name]
       const realizedRevenuePercent = realizedAverageCost ? `${formatMoney(((realizedAveragePrice - realizedAverageCost) * 100) / realizedAverageCost, 4)}` : 0
       const realizeRevenueUsd = formatMoney(realizedUsd - realizedCost, 4)
-      fillsInfo = Object.assign(fillsInfo, { realizedRevenuePercent, realizeRevenueUsd })
+      Object.assign(fillsInfo, { realizedRevenuePercent, realizeRevenueUsd })
     }
 
     map[name] = Object.assign({}, fills[name], fillsInfo)
@@ -103,14 +103,14 @@ async function init(presentMode) {
   }
 
   function _addThemAll(map) {
-    let defaultConstructor = {
+    const defaultConstructor = {
       spendUsd: 0,
       size: 0,
       averagePrice: 0
     }
     // 已實現損益
     if(presentMode === 'realized') {
-      defaultConstructor = Object.assign(defaultConstructor, {
+      Object.assign(defaultConstructor, {
         realizedUsd: 0,
         realizedCost: 0,
         realizedSize: 0,

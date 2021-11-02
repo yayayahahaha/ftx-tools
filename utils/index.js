@@ -105,7 +105,7 @@ function getEnv(key) {
       return null
   }
 }
-function printResult(result) {
+function printResult(result, mode = 'unrealized') {
   if (!Object.keys(result).length) {
     console.log('-無損益資訊可以顯示-')
     return
@@ -121,24 +121,21 @@ function printResult(result) {
         spendUsd: rowSpendUsd,
         size: rowSize,
         averagePrice: rowAveragePrice,
-        realizedAveragePrice: rawRealizedAveragePrice,
-        realizedSize: rawRealizedSize,
-        realizedAverageCost: rawRealizedAverageCost,
         revenuePersent,
-        realizedRevenuePercent,
         revenueUsd,
-        realizeRevenueUsd,
-        nowUsd
+        nowUsd,
+        // 已實現損益
+        realizedAveragePrice,
+        realizedSize,
+        realizedAverageCost,
+        realizedRevenuePercent,
+        realizeRevenueUsd
       } = result[name]
       const spendUsd = formatMoney(rowSpendUsd, 4)
       const size = formatMoney(rowSize, 6)
       const averagePrice = formatMoney(rowAveragePrice, 4)
-      const realizedAveragePrice = formatMoney(rawRealizedAveragePrice, 4)
-      const realizedSize = formatMoney(rawRealizedSize, 6)
-      const realizedAverageCost = formatMoney(rawRealizedAverageCost, 4)
 
       const tableSort = ['持有數量', '均價', '現價', '成本', '當前餘額']
-      const realizedTableSort = ['已實現數量', '已實現均價', '已實現平均成本']
 
       const translate = (info => {
         const result = Object.keys(info).reduce((map, key) => {
@@ -161,22 +158,32 @@ function printResult(result) {
             case 'nowUsd':
               map['當前餘額'] = info[key]
               break
+            // 已實現損益
             case 'realizedSize':
-              map['已實現數量'] = realizedSize
+              map['已實現數量'] = formatMoney(realizedSize, 4)
               break
             case 'realizedAveragePrice':
-              map['已實現均價'] = realizedAveragePrice
+              map['已實現均價'] = formatMoney(realizedAveragePrice, 4)
               break
             case 'realizedAverageCost':
-              map['已實現平均成本'] = realizedAverageCost
+              map['已實現平均成本'] = formatMoney(realizedAverageCost, 4)
               break
           }
           return map
         }, {})
-        return {
+
+        let returnObject = {
           unRealizedTable: tableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {}),
-          realizedTable: realizedTableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
         }
+        // 已實現損益
+        if(mode === 'realized') {
+          const realizedTableSort = ['已實現數量', '已實現均價', '已實現平均成本']
+          returnObject = Object.assign({}, returnObject, {
+            realizedTable: realizedTableSort.reduce((map, key) => Object.assign(map, { [key]: result[key] }), {})
+          })
+        }
+
+        return returnObject
       })(result[name])
 
       totalSpendUsd += spendUsd
@@ -184,14 +191,19 @@ function printResult(result) {
       totalNowUsd += nowUsd
 
       const consoleColor = revenueUsd > 0 ? fgGreen : fgRed
-      const realizedConsoleColor = realizeRevenueUsd > 0 ? fgGreen : fgRed
       console.log(`${bright}${fgCyan}---------- ${bold}${name}${reset}${bright}${fgCyan} ----------${reset}`)
       console.log(`損益: ${consoleColor}${revenueUsd}${reset} USD`)
       console.log(`損益率: ${consoleColor}${revenuePersent}${reset} %`)
       console.table({ [name]: { ...translate.unRealizedTable } })
-      console.log(`已實現損益: ${realizedConsoleColor}${realizeRevenueUsd}${reset} USD`)
-      console.log(`已實現損益率: ${realizedConsoleColor}${realizedRevenuePercent}${reset} %`)
-      console.table({ [name]: { ...translate.realizedTable } })
+      
+      // 已實現損益
+      if(mode === 'realized') {
+        const realizedConsoleColor = realizeRevenueUsd > 0 ? fgGreen : fgRed
+        console.log(`已實現損益: ${realizedConsoleColor}${realizeRevenueUsd}${reset} USD`)
+        console.log(`已實現損益率: ${realizedConsoleColor}${realizedRevenuePercent}${reset} %`)
+        console.table({ [name]: { ...translate.realizedTable } })
+      }
+
       console.log('')
     })
 

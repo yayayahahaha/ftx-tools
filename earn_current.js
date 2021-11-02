@@ -15,9 +15,32 @@ const { bold, fgYellow, reset } = require(path.resolve(__dirname, './utils/conso
 
 const fs = require('fs')
 
-init()
+const argument = process.argv.length > 2 ? process.argv[2] : null
+let mode
+switch(argument) {
+  // TODO: 合併損益 or 歷史總投資？
+  // case 'a':
+  // case 'all':
+  //   mode = 'all'
+  //   break
+  case 'r':
+  case 'realized':
+    mode = 'realized'
+    break
+  case 'u':
+  case 'ur':
+  case 'unrealized':
+  case null:
+    mode = 'unrealized'
+    break
+  default:
+    mode = 'unrealized'
+    console.warn(`傳入的 mode 參數 ${argument} 對應不到模式，將使用預設模式(未實現損益)`)
+}
 
-async function init() {
+init(mode)
+
+async function init(presentMode) {
   const [subAccounts, subAccountError] = await fetchSubAccount()
   if (subAccountError) return
   subAccounts.push({ nickname: '' /* 主錢包 */ })
@@ -51,12 +74,26 @@ async function init() {
     const revenuePersent = `${formatMoney(((currentPrice - averagePrice) * 100) / averagePrice, 4)}`
     const nowUsd = formatMoney(size * currentPrice, 4)
     const revenueUsd = formatMoney(nowUsd - spendUsd, 4)
+    const fillsInfo = {
+      name,
+      currentPrice,
+      revenuePersent,
+      revenueUsd,
+      nowUsd
+    }
+    // 已實現損益
+    if(presentMode === 'realized') {
+      const { realizedAveragePrice, realizedAverageCost, realizedUsd, realizedCost } = fills[name]
+      const realizedRevenuePercent = realizedAverageCost ? `${formatMoney(((realizedAveragePrice - realizedAverageCost) * 100) / realizedAverageCost, 4)}` : 0
+      const realizeRevenueUsd = formatMoney(realizedUsd - realizedCost, 4)
+      Object.assign(fillsInfo, { realizedRevenuePercent, realizeRevenueUsd })
+    }
 
-    map[name] = Object.assign({}, fills[name], { name, revenuePersent, revenueUsd, currentPrice, nowUsd })
+    map[name] = Object.assign({}, fills[name], fillsInfo)
     return map
   }, {})
 
-  printResult(result)
+  printResult(result, presentMode)
   if (sumCount.nonSpotGoods) {
     console.log('')
     console.log(
@@ -66,8 +103,25 @@ async function init() {
   }
 
   function _addThemAll(map) {
+    const defaultConstructor = {
+      spendUsd: 0,
+      size: 0,
+      averagePrice: 0
+    }
+    // 已實現損益
+    if(presentMode === 'realized') {
+      Object.assign(defaultConstructor, {
+        realizedUsd: 0,
+        realizedCost: 0,
+        realizedSize: 0,
+        realizedAveragePrice: 0,
+        realizedAverageCost: 0
+      })
+    }
+
     let result = Object.keys(map).reduce((info, market) => {
-      info[market] = info[market] || { spendUsd: 0, size: 0, averagePrice: 0 }
+      
+      info[market] = info[market] || Object.assign({}, defaultConstructor)
       const marketInfo = info[market]
 
       const tradeList = map[market]
@@ -87,11 +141,21 @@ async function init() {
             return
         }
 
+        // 已實現損益
+        if(presentMode === 'realized' && side === 'sell') {
+          marketInfo.realizedUsd += price * size
+          marketInfo.realizedCost += marketInfo.averagePrice * size
+          marketInfo.realizedSize += size
+          marketInfo.realizedAveragePrice = marketInfo.realizedSize ? marketInfo.realizedUsd / marketInfo.realizedSize : 0
+          marketInfo.realizedAverageCost = marketInfo.realizedSize ? marketInfo.realizedCost / marketInfo.realizedSize : 0
+        }
+
+        // 未實現損益
         marketInfo.spendUsd += (side === 'buy' ? price : marketInfo.averagePrice) * size * unit
         marketInfo.size += size * unit
         marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0
 
-        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || { spendUsd: 0, size: 0, averagePrice: 0 }
+        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || Object.assign({}, defaultConstructor)
         const feeInfo = info[`${feeCurrency}/USD`]
         feeInfo.size += fee * unit
       })

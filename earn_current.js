@@ -17,7 +17,7 @@ const fs = require('fs')
 
 const argument = process.argv.length > 2 ? process.argv[2] : null
 let mode
-switch(argument) {
+switch (argument) {
   // TODO: 合併損益 or 歷史總投資？
   // case 'a':
   // case 'all':
@@ -82,9 +82,11 @@ async function init(presentMode) {
       nowUsd
     }
     // 已實現損益
-    if(presentMode === 'realized') {
+    if (presentMode === 'realized') {
       const { realizedAveragePrice, realizedAverageCost, realizedUsd, realizedCost } = fills[name]
-      const realizedRevenuePercent = realizedAverageCost ? `${formatMoney(((realizedAveragePrice - realizedAverageCost) * 100) / realizedAverageCost, 4)}` : 0
+      const realizedRevenuePercent = realizedAverageCost
+        ? `${formatMoney(((realizedAveragePrice - realizedAverageCost) * 100) / realizedAverageCost, 4)}`
+        : 0
       const realizeRevenueUsd = formatMoney(realizedUsd - realizedCost, 4)
       Object.assign(fillsInfo, { realizedRevenuePercent, realizeRevenueUsd })
     }
@@ -109,7 +111,7 @@ async function init(presentMode) {
       averagePrice: 0
     }
     // 已實現損益
-    if(presentMode === 'realized') {
+    if (presentMode === 'realized') {
       Object.assign(defaultConstructor, {
         realizedUsd: 0,
         realizedCost: 0,
@@ -120,7 +122,6 @@ async function init(presentMode) {
     }
 
     let result = Object.keys(map).reduce((info, market) => {
-      
       info[market] = info[market] || Object.assign({}, defaultConstructor)
       const marketInfo = info[market]
 
@@ -142,12 +143,16 @@ async function init(presentMode) {
         }
 
         // 已實現損益
-        if(presentMode === 'realized' && side === 'sell') {
+        if (presentMode === 'realized' && side === 'sell') {
           marketInfo.realizedUsd += price * size
           marketInfo.realizedCost += marketInfo.averagePrice * size
           marketInfo.realizedSize += size
-          marketInfo.realizedAveragePrice = marketInfo.realizedSize ? marketInfo.realizedUsd / marketInfo.realizedSize : 0
-          marketInfo.realizedAverageCost = marketInfo.realizedSize ? marketInfo.realizedCost / marketInfo.realizedSize : 0
+          marketInfo.realizedAveragePrice = marketInfo.realizedSize
+            ? marketInfo.realizedUsd / marketInfo.realizedSize
+            : 0
+          marketInfo.realizedAverageCost = marketInfo.realizedSize
+            ? marketInfo.realizedCost / marketInfo.realizedSize
+            : 0
         }
 
         // 未實現損益

@@ -120,7 +120,16 @@ async function init() {
         marketInfo.size += size * unit
         marketInfo.averagePrice = marketInfo.size ? marketInfo.spendUsd / marketInfo.size : 0
 
-        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || { spendUsd: 0, size: 0, averagePrice: 0 }
+        info[`${feeCurrency}/USD`] = info[`${feeCurrency}/USD`] || {
+          realizedUsd: 0,
+          realizedCost: 0,
+          realizedSize: 0,
+          realizedAveragePrice: 0,
+          realizedAverageCost: 0,
+          spendUsd: 0,
+          size: 0,
+          averagePrice: 0
+        }
         const feeInfo = info[`${feeCurrency}/USD`]
         feeInfo.size += fee * unit
       })
